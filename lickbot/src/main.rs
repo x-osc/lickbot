@@ -8,6 +8,7 @@ use azalea::{BlockPos, prelude::*};
 use azalea::{chat::ChatPacket, entity::Position};
 use plugins::modules::auto_look::AutoLookPlugin;
 use plugins::modules::auto_totem::{AutoTotemPlugin, EnableAutoTotemEvent};
+use plugins::modules::kill_aura::AutoKillPlugin;
 use tracing::{error, info};
 
 const USERNAMES: [&str; 1] = ["lickbot"];
@@ -26,6 +27,7 @@ async fn main() {
 
     let mut swarm = SwarmBuilder::new()
         .add_plugins(AutoLookPlugin)
+        .add_plugins(AutoKillPlugin)
         .set_handler(handle)
         .set_swarm_handler(swarm_handle)
         .join_delay(Duration::from_secs(5));

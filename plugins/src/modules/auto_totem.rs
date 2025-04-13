@@ -49,7 +49,7 @@ pub struct DisableAutoTotemEvent {
 }
 
 #[allow(clippy::type_complexity)]
-fn handle_auto_totem(
+pub fn handle_auto_totem(
     query: Query<(Entity, &Inventory), (With<AutoTotem>, With<Player>, With<LocalEntity>)>,
     mut container_click_event: EventWriter<ContainerClickEvent>,
 ) {

@@ -14,7 +14,7 @@ impl Plugin for AutoLookPlugin {
     }
 }
 
-fn handle_auto_look(
+pub fn handle_auto_look(
     query: Query<Entity, (With<Player>, With<LocalEntity>)>,
     entities: EntityFinder<With<Player>>,
     targets: Query<(&Position, Option<&EyeHeight>)>,
