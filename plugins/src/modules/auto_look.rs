@@ -21,7 +21,7 @@ fn handle_auto_look(
     mut look_at_events: EventWriter<LookAtEvent>,
 ) {
     for entity in &query {
-        let Some(target) = entities.nearest_to_entity(entity, 40.) else {
+        let Some(target) = entities.nearest_to_entity(entity, f64::MAX) else {
             continue;
         };
 
