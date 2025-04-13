@@ -146,15 +146,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "auto-totem"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "azalea",
- "tracing",
-]
-
-[[package]]
 name = "autocfg"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1748,9 +1739,9 @@ name = "lickbot"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "auto-totem",
  "azalea",
  "parking_lot",
+ "plugins",
  "tokio",
  "tracing",
 ]
@@ -2156,6 +2147,15 @@ checksum = "f950b2377845cebe5cf8b5165cb3cc1a5e0fa5cfa3e1f7f55707d8fd82e0a7b7"
 dependencies = [
  "der",
  "spki",
+]
+
+[[package]]
+name = "plugins"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "azalea",
+ "tracing",
 ]
 
 [[package]]

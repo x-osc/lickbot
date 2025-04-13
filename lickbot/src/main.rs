@@ -2,11 +2,11 @@ use std::thread;
 use std::time::Duration;
 
 use anyhow::{Result, bail};
-use auto_totem::{AutoTotemPlugin, EnableAutoTotemEvent};
 use azalea::pathfinder::goals::BlockPosGoal;
 use azalea::swarm::prelude::*;
 use azalea::{BlockPos, prelude::*};
 use azalea::{chat::ChatPacket, entity::Position};
+use plugins::modules::auto_totem::{AutoTotemPlugin, EnableAutoTotemEvent};
 use tracing::{error, info};
 
 const USERNAMES: [&str; 1] = ["lickbot"];
