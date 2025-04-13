@@ -1,10 +1,12 @@
 use std::thread;
 use std::time::Duration;
 
-use anyhow::Result;
-use azalea::prelude::*;
+use anyhow::{Result, bail};
+use azalea::pathfinder::goals::BlockPosGoal;
 use azalea::swarm::prelude::*;
-use tracing::info;
+use azalea::{BlockPos, prelude::*};
+use azalea::{chat::ChatPacket, entity::Position};
+use tracing::{error, info};
 
 const USERNAMES: [&str; 1] = ["lickbot"];
 const ADDRESS: &str = "localhost:60000";
@@ -72,6 +74,7 @@ async fn handle(bot: Client, event: Event, state: State) -> Result<()> {
                     .insert(azalea::pathfinder::PathfinderDebugParticles);
             }
         }
+        Event::Chat(chat) => handle_chat(bot, state, chat).await?,
         Event::Death(death) => {
             info!("{} has died! Reason: ```{:?}```", bot.username(), death)
         }
@@ -100,6 +103,35 @@ async fn swarm_handle(swarm: Swarm, event: SwarmEvent, state: SwarmState) -> Res
         }
         _ => {}
     }
+
+    Ok(())
+}
+
+async fn handle_chat(bot: Client, state: State, chat: &ChatPacket) -> Result<()> {
+    let (username, content) = chat.split_sender_and_content();
+
+    let parts: Vec<&str> = content.split_whitespace().collect();
+
+    match parts.as_slice() {
+        ["!goto"] => {
+            let error_fn = || {
+                error!("Got !goto, could not find sender");
+                anyhow::anyhow!("could not find message sender")
+            };
+            let uuid = chat.sender_uuid().ok_or_else(error_fn)?;
+            let entity = bot.entity_by_uuid(uuid).ok_or_else(error_fn)?;
+            let position = bot
+                .get_entity_component::<Position>(entity)
+                .ok_or_else(error_fn)?;
+
+            info!(
+                "going to location of {}",
+                chat.sender().ok_or_else(error_fn)?
+            );
+            bot.goto(BlockPosGoal(BlockPos::from(position)));
+        }
+        _ => {}
+    };
 
     Ok(())
 }
