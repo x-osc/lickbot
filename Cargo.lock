@@ -146,6 +146,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "auto-totem"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "azalea",
+ "tracing",
+]
+
+[[package]]
 name = "autocfg"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1739,6 +1748,7 @@ name = "lickbot"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "auto-totem",
  "azalea",
  "parking_lot",
  "tokio",

@@ -2,6 +2,7 @@ use std::thread;
 use std::time::Duration;
 
 use anyhow::{Result, bail};
+use auto_totem::{AutoTotemPlugin, EnableAutoTotemEvent};
 use azalea::pathfinder::goals::BlockPosGoal;
 use azalea::swarm::prelude::*;
 use azalea::{BlockPos, prelude::*};
@@ -9,7 +10,7 @@ use azalea::{chat::ChatPacket, entity::Position};
 use tracing::{error, info};
 
 const USERNAMES: [&str; 1] = ["lickbot"];
-const ADDRESS: &str = "localhost:60000";
+const ADDRESS: &str = "localhost:25555";
 const PATHFINDER_DEBUG_PARTICLES: bool = false;
 
 #[derive(Debug, Component, Clone, Default)]
@@ -23,6 +24,7 @@ async fn main() {
     thread::spawn(deadlock_detection_thread);
 
     let mut swarm = SwarmBuilder::new()
+        .add_plugins(AutoTotemPlugin)
         .set_handler(handle)
         .set_swarm_handler(swarm_handle)
         .join_delay(Duration::from_secs(5));
@@ -73,6 +75,9 @@ async fn handle(bot: Client, event: Event, state: State) -> Result<()> {
                     .entity_mut(bot.entity)
                     .insert(azalea::pathfinder::PathfinderDebugParticles);
             }
+            bot.ecs
+                .lock()
+                .send_event(EnableAutoTotemEvent { entity: bot.entity });
         }
         Event::Chat(chat) => handle_chat(bot, state, chat).await?,
         Event::Death(death) => {
