@@ -19,34 +19,16 @@ use tracing::{debug, info};
 pub struct AutoTotemPlugin;
 impl Plugin for AutoTotemPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<EnableAutoTotemEvent>()
-            .add_event::<DisableAutoTotemEvent>()
-            .add_systems(
-                GameTick,
-                handle_auto_totem.before(handle_container_click_event),
-            )
-            .add_systems(
-                Update,
-                (enable_auto_totem_listener, disable_auto_totem_listener),
-            );
+        app.add_systems(
+            GameTick,
+            handle_auto_totem.before(handle_container_click_event),
+        );
     }
 }
 
 /// Component present when autototem is enabled.
 #[derive(Component)]
 pub struct AutoTotem;
-
-/// Enable autototem for an entity.
-#[derive(Event)]
-pub struct EnableAutoTotemEvent {
-    pub entity: Entity,
-}
-
-/// Disable autototem for an entity.
-#[derive(Event)]
-pub struct DisableAutoTotemEvent {
-    pub entity: Entity,
-}
 
 #[allow(clippy::type_complexity)]
 pub fn handle_auto_totem(
@@ -91,25 +73,5 @@ pub fn handle_auto_totem(
                 }),
             });
         }
-    }
-}
-
-fn enable_auto_totem_listener(
-    mut events: EventReader<EnableAutoTotemEvent>,
-    mut commands: Commands,
-) {
-    for event in events.read() {
-        debug!("enabled autototem");
-        commands.entity(event.entity).insert(AutoTotem);
-    }
-}
-
-fn disable_auto_totem_listener(
-    mut events: EventReader<DisableAutoTotemEvent>,
-    mut commands: Commands,
-) {
-    for event in events.read() {
-        debug!("disabled autototem");
-        commands.entity(event.entity).remove::<AutoTotem>();
     }
 }
