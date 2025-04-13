@@ -1711,6 +1711,7 @@ dependencies = [
  "azalea",
  "parking_lot",
  "tokio",
+ "tracing",
 ]
 
 [[package]]

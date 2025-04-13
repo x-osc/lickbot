@@ -8,3 +8,4 @@ anyhow = "1.0.97"
 azalea = { git = "https://github.com/x-osc/azalea", version = "0.11.0" }
 parking_lot = { version = "0.12.3", features = ["deadlock_detection"] }
 tokio = "1.44.2"
+tracing = "0.1.41"

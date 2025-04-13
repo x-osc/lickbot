@@ -4,6 +4,7 @@ use std::time::Duration;
 use anyhow::Result;
 use azalea::prelude::*;
 use azalea::swarm::prelude::*;
+use tracing::info;
 
 const USERNAMES: [&str; 1] = ["lickbot"];
 const ADDRESS: &str = "localhost:60000";
@@ -58,7 +59,7 @@ fn deadlock_detection_thread() {
 
 async fn handle(bot: Client, event: Event, state: State) -> Result<()> {
     match &event {
-        azalea::Event::Init => {
+        Event::Init => {
             bot.set_client_information(azalea::ClientInformation {
                 view_distance: 32,
                 ..Default::default()
@@ -71,6 +72,9 @@ async fn handle(bot: Client, event: Event, state: State) -> Result<()> {
                     .insert(azalea::pathfinder::PathfinderDebugParticles);
             }
         }
+        Event::Death(death) => {
+            info!("{} has died! Reason: ```{:?}```", bot.username(), death)
+        }
         _ => {}
     }
     Ok(())
@@ -79,7 +83,10 @@ async fn handle(bot: Client, event: Event, state: State) -> Result<()> {
 async fn swarm_handle(swarm: Swarm, event: SwarmEvent, state: SwarmState) -> Result<()> {
     match &event {
         SwarmEvent::Disconnect(account, join_opts) => {
-            println!("bot got kicked! {}", account.username);
+            info!(
+                "{} got disconnected! Reconnecting in 5 seconds",
+                account.username
+            );
             tokio::time::sleep(Duration::from_secs(5)).await;
             swarm
                 .add_and_retry_forever_with_opts(account, State::default(), join_opts)
