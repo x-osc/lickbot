@@ -87,7 +87,7 @@ async fn swarm_handle(swarm: Swarm, event: SwarmEvent, state: SwarmState) -> Res
                 "{} got disconnected! Reconnecting in 5 seconds",
                 account.username
             );
-            tokio::time::sleep(Duration::from_secs(5)).await;
+            tokio::time::sleep(Duration::from_millis(500)).await;
             swarm
                 .add_and_retry_forever_with_opts(account, State::default(), join_opts)
                 .await;
