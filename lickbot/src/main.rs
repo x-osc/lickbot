@@ -6,6 +6,7 @@ use azalea::pathfinder::goals::BlockPosGoal;
 use azalea::swarm::prelude::*;
 use azalea::{BlockPos, prelude::*};
 use azalea::{chat::ChatPacket, entity::Position};
+use plugins::modules::auto_look::AutoLookPlugin;
 use plugins::modules::auto_totem::{AutoTotemPlugin, EnableAutoTotemEvent};
 use tracing::{error, info};
 
@@ -24,7 +25,7 @@ async fn main() {
     thread::spawn(deadlock_detection_thread);
 
     let mut swarm = SwarmBuilder::new()
-        .add_plugins(AutoTotemPlugin)
+        .add_plugins(AutoLookPlugin)
         .set_handler(handle)
         .set_swarm_handler(swarm_handle)
         .join_delay(Duration::from_secs(5));
@@ -75,9 +76,9 @@ async fn handle(bot: Client, event: Event, state: State) -> Result<()> {
                     .entity_mut(bot.entity)
                     .insert(azalea::pathfinder::PathfinderDebugParticles);
             }
-            bot.ecs
-                .lock()
-                .send_event(EnableAutoTotemEvent { entity: bot.entity });
+        }
+        Event::Spawn => {
+            info!("logged in to world");
         }
         Event::Chat(chat) => handle_chat(bot, state, chat).await?,
         Event::Death(death) => {

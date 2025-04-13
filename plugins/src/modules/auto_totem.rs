@@ -2,7 +2,7 @@
 // licensed under the GPL 3.0
 // copyright AS1100k
 
-use azalea::app::{Plugin, Update};
+use azalea::app::{App, Plugin, Update};
 use azalea::ecs::prelude::*;
 use azalea::entity::LocalEntity;
 use azalea::entity::metadata::Player;
@@ -18,7 +18,7 @@ use tracing::{debug, info};
 #[derive(Clone, Default)]
 pub struct AutoTotemPlugin;
 impl Plugin for AutoTotemPlugin {
-    fn build(&self, app: &mut azalea::app::App) {
+    fn build(&self, app: &mut App) {
         app.add_event::<EnableAutoTotemEvent>()
             .add_event::<DisableAutoTotemEvent>()
             .add_systems(
