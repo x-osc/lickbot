@@ -2,7 +2,6 @@
 // MIT license
 // copyright ShaysBox
 
-use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
@@ -11,8 +10,7 @@ use azalea::attack::AttackEvent;
 use azalea::ecs::prelude::*;
 use azalea::entity::metadata::{AbstractMonster, Player};
 use azalea::entity::{EyeHeight, LocalEntity, Position};
-use azalea::inventory::operations::{ClickOperation, SwapClick};
-use azalea::inventory::{ContainerClickEvent, Inventory};
+use azalea::inventory::{Inventory, ItemStack, Menu, SetSelectedHotbarSlotEvent, components};
 use azalea::nearest_entity::EntityFinder;
 use azalea::pathfinder::Pathfinder;
 use azalea::physics::PhysicsSet;
@@ -40,7 +38,7 @@ pub fn handle_auto_kill(
     mut query: Query<(Entity, &Inventory, &Pathfinder), (With<Player>, With<LocalEntity>)>,
     entities: EntityFinder<With<AbstractMonster>>,
     targets: Query<(&MinecraftEntityId, &Position, Option<&EyeHeight>)>,
-    mut container_click_events: EventWriter<ContainerClickEvent>,
+    mut set_selected_hotbar_slot_events: EventWriter<SetSelectedHotbarSlotEvent>,
     mut look_at_events: EventWriter<LookAtEvent>,
     mut attack_events: EventWriter<AttackEvent>,
 ) {
@@ -64,36 +62,15 @@ pub fn handle_auto_kill(
 
         look_at_events.send(LookAtEvent { entity, position });
 
-        let held_kind = inventory.held_item().kind();
-        if !WEAPON_ITEMS.contains_key(&held_kind) {
-            let mut weapon_slots = Vec::new();
+        // add delay here ?
 
-            for slot in inventory.inventory_menu.player_slots_range() {
-                let Some(item) = inventory.inventory_menu.slot(slot) else {
-                    continue;
-                };
-
-                if let Some(damage) = WEAPON_ITEMS.get(&item.kind()) {
-                    weapon_slots.push((slot, *damage));
-                }
-            }
-
-            weapon_slots.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(Ordering::Equal));
-
-            if let Some((slot, _)) = weapon_slots.first() {
-                debug!(
-                    "Swapping Weapon from {slot} to {}",
-                    inventory.selected_hotbar_slot
-                );
-                container_click_events.send(ContainerClickEvent {
-                    entity,
-                    window_id: inventory.id,
-                    operation: ClickOperation::Swap(SwapClick {
-                        source_slot: u16::try_from(*slot).unwrap(),
-                        target_slot: inventory.selected_hotbar_slot,
-                    }),
-                });
-            }
+        let best_slot = best_weapon_in_hotbar(&inventory.inventory_menu) as u8;
+        if inventory.selected_hotbar_slot != best_slot {
+            debug!("setting selected weapon to {}", best_slot);
+            set_selected_hotbar_slot_events.send(SetSelectedHotbarSlotEvent {
+                entity,
+                slot: best_slot,
+            });
         }
 
         attack_events.send(AttackEvent {
@@ -101,6 +78,34 @@ pub fn handle_auto_kill(
             target: *target_id,
         });
     }
+}
+
+/// finds the best weapon in hotbar and returns hotbar index
+pub fn best_weapon_in_hotbar(menu: &Menu) -> usize {
+    let hotbar_slots = &menu.slots()[menu.hotbar_slots_range()];
+
+    let weapon_slots: Vec<(usize, &ItemStack)> = hotbar_slots.iter().enumerate().collect();
+
+    // TODO: return option
+    weapon_slots
+        .iter()
+        .max_by_key(|(_, item)| {
+            // damage from hashmap
+            if let Some(damage) = WEAPON_ITEMS.get(&item.kind()) {
+                return damage;
+            }
+
+            // if has durability -> lower
+            if let ItemStack::Present(item_data) = item {
+                if item_data.components.has::<components::Damage>() {
+                    return &-1;
+                }
+            }
+
+            &0
+        })
+        .expect("should have iterator of length 9 (hotbar)")
+        .0
 }
 
 pub static WEAPON_ITEMS: LazyLock<HashMap<Item, i32>> = LazyLock::new(|| {

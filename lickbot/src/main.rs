@@ -1,7 +1,7 @@
 use std::thread;
 use std::time::Duration;
 
-use anyhow::{Result, bail};
+use anyhow::Result;
 use azalea::pathfinder::goals::BlockPosGoal;
 use azalea::swarm::prelude::*;
 use azalea::{BlockPos, prelude::*};
@@ -28,7 +28,7 @@ async fn main() {
     let mut swarm = SwarmBuilder::new()
         .add_plugins(AutoLookPlugin)
         .add_plugins(AutoTotemPlugin)
-        // .add_plugins(AutoKillPlugin)
+        .add_plugins(AutoKillPlugin)
         .set_handler(handle)
         .set_swarm_handler(swarm_handle)
         .join_delay(Duration::from_secs(5));
