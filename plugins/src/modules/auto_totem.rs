@@ -2,17 +2,15 @@
 // licensed under the GPL 3.0
 // copyright AS1100k
 
-use azalea::app::{App, Plugin, Update};
+use azalea::app::{App, Plugin};
 use azalea::ecs::prelude::*;
 use azalea::entity::LocalEntity;
 use azalea::entity::metadata::Player;
 use azalea::inventory::operations::{ClickOperation, SwapClick};
-use azalea::inventory::{
-    self, ContainerClickEvent, Inventory, ItemStack, Menu, handle_container_click_event,
-};
+use azalea::inventory::{self, ContainerClickEvent, Inventory, ItemStack, Menu};
 use azalea::prelude::*;
 use azalea::registry::Item;
-use tracing::{debug, info};
+use tracing::{debug, error};
 
 /// Plugin which automatically switches totem to offhand.
 #[derive(Clone, Default)]
@@ -21,7 +19,7 @@ impl Plugin for AutoTotemPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             GameTick,
-            handle_auto_totem.before(handle_container_click_event),
+            handle_auto_totem.before(inventory::handle_container_click_event),
         );
     }
 }
@@ -35,9 +33,9 @@ pub fn handle_auto_totem(
     query: Query<(Entity, &Inventory), (With<AutoTotem>, With<Player>, With<LocalEntity>)>,
     mut container_click_event: EventWriter<ContainerClickEvent>,
 ) {
-    for (entity, inventory_component) in query.iter() {
+    for (entity, inventory) in query.iter() {
         // guaranteed to be `Menu::Player`
-        let Menu::Player(player_inventory) = &inventory_component.inventory_menu else {
+        let Menu::Player(player_inventory) = &inventory.inventory_menu else {
             continue;
         };
 
@@ -45,31 +43,34 @@ pub fn handle_auto_totem(
             continue;
         }
 
-        let menu = &inventory_component.inventory_menu;
-        let slots = &menu.slots()[menu.player_slots_range()];
-        let mut totem_index: Option<usize> = None;
+        let menu = &inventory.inventory_menu;
 
-        for (i, stack) in slots.iter().enumerate() {
-            if let ItemStack::Present(item_data) = stack {
-                if item_data.kind == Item::TotemOfUndying {
-                    let index = i + menu.player_slots_range().start();
-                    totem_index = Some(index);
-                    info!("found totem at index {}", index);
-                    break;
-                }
+        let mut totem_index: Option<usize> = None;
+        for slot in menu.player_slots_range() {
+            let Some(item) = menu.slot(slot) else {
+                error!("tried to access player slot out of bounds");
+                continue;
+            };
+
+            let ItemStack::Present(item_data) = item else {
+                continue;
+            };
+
+            if item_data.kind == Item::TotemOfUndying {
+                totem_index = Some(slot);
+                debug!("found totem at slot {}", slot)
             }
         }
-
-        println!("{:?}", inventory::Player::OFFHAND_SLOT as u8);
-        println!("{:?}", menu.slot(totem_index.unwrap_or(1)));
 
         if let Some(index) = totem_index {
             container_click_event.send(ContainerClickEvent {
                 entity,
-                window_id: inventory_component.id,
+                window_id: inventory.id,
                 operation: ClickOperation::Swap(SwapClick {
                     source_slot: index as u16,
-                    target_slot: 36,
+                    // this is the button number, 40 is for offhand
+                    // https://minecraft.wiki/w/Java_Edition_protocol#Click_Container
+                    target_slot: 40,
                 }),
             });
         }
