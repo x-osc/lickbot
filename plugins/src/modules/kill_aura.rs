@@ -26,8 +26,11 @@ impl Plugin for AutoKillPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             GameTick,
-            handle_auto_kill
-                .after(super::auto_look::handle_auto_look)
+            (
+                handle_auto_weapon,
+                handle_auto_kill.after(super::auto_look::handle_auto_look),
+            )
+                .chain()
                 .before(PhysicsSet),
         );
     }
@@ -35,14 +38,13 @@ impl Plugin for AutoKillPlugin {
 
 #[allow(clippy::type_complexity)]
 pub fn handle_auto_kill(
-    mut query: Query<(Entity, &Inventory, &Pathfinder), (With<Player>, With<LocalEntity>)>,
+    mut query: Query<(Entity, &Pathfinder), (With<Player>, With<LocalEntity>)>,
     entities: EntityFinder<With<AbstractMonster>>,
     targets: Query<(&MinecraftEntityId, &Position, Option<&EyeHeight>)>,
-    mut set_selected_hotbar_slot_events: EventWriter<SetSelectedHotbarSlotEvent>,
     mut look_at_events: EventWriter<LookAtEvent>,
     mut attack_events: EventWriter<AttackEvent>,
 ) {
-    for (entity, inventory, pathfinder) in &mut query {
+    for (entity, pathfinder) in &mut query {
         if let Some(_goal) = &pathfinder.goal {
             continue;
         }
@@ -64,19 +66,36 @@ pub fn handle_auto_kill(
 
         // add delay here ?
 
+        attack_events.send(AttackEvent {
+            entity,
+            target: *target_id,
+        });
+    }
+}
+
+#[allow(clippy::type_complexity)]
+fn handle_auto_weapon(
+    query: Query<(Entity, &Inventory, &Pathfinder), (With<Player>, With<LocalEntity>)>,
+    entities: EntityFinder<With<AbstractMonster>>,
+    mut set_selected_hotbar_slot_events: EventWriter<SetSelectedHotbarSlotEvent>,
+) {
+    for (entity, inventory, pathfinder) in &query {
+        if let Some(_goal) = &pathfinder.goal {
+            continue;
+        }
+
+        if entities.nearest_to_entity(entity, 3.2).is_none() {
+            continue;
+        };
+
         let best_slot = best_weapon_in_hotbar(&inventory.inventory_menu) as u8;
         if inventory.selected_hotbar_slot != best_slot {
-            debug!("setting selected weapon to {}", best_slot);
+            debug!("setting selected weapon to slot {}", best_slot);
             set_selected_hotbar_slot_events.send(SetSelectedHotbarSlotEvent {
                 entity,
                 slot: best_slot,
             });
         }
-
-        attack_events.send(AttackEvent {
-            entity,
-            target: *target_id,
-        });
     }
 }
 
