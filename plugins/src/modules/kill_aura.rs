@@ -19,7 +19,7 @@ use azalea::world::MinecraftEntityId;
 use azalea::{LookAtEvent, Vec3, prelude::*};
 use tracing::debug;
 
-/// Automatically swap and attack nearby monsters
+/// Automatically swap weapon and attack nearby monsters
 pub struct AutoKillPlugin;
 
 impl Plugin for AutoKillPlugin {

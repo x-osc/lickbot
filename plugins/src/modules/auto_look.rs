@@ -6,6 +6,7 @@ use azalea::nearest_entity::EntityFinder;
 use azalea::physics::PhysicsSet;
 use azalea::{LookAtEvent, Vec3, prelude::*};
 
+/// Automatically look at the nearest player
 pub struct AutoLookPlugin;
 
 impl Plugin for AutoLookPlugin {
