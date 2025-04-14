@@ -6,6 +6,7 @@ use azalea::pathfinder::goals::BlockPosGoal;
 use azalea::swarm::prelude::*;
 use azalea::{BlockPos, prelude::*};
 use azalea::{chat::ChatPacket, entity::Position};
+use plugins::modules::auto_eat::AutoEatPlugin;
 use plugins::modules::auto_look::AutoLookPlugin;
 use plugins::modules::auto_totem::{self, AutoTotemPlugin};
 use plugins::modules::kill_aura::AutoKillPlugin;
@@ -29,6 +30,7 @@ async fn main() {
         .add_plugins(AutoLookPlugin)
         .add_plugins(AutoTotemPlugin)
         .add_plugins(AutoKillPlugin)
+        .add_plugins(AutoEatPlugin)
         .set_handler(handle)
         .set_swarm_handler(swarm_handle)
         .join_delay(Duration::from_secs(5));
