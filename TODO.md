@@ -1,0 +1,2 @@
+ - clientext for autototem etc
+ - check sightline for lookat
