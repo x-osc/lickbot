@@ -51,8 +51,6 @@ impl AutoEatPlugin {
         mut container_click_events: EventWriter<ContainerClickEvent>,
     ) {
         for (entity, hunger, inventory, direction) in &mut query {
-            debug!("{}", hunger.food);
-
             if hunger.food >= 18 {
                 continue;
             }
