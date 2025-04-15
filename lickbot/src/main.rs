@@ -7,8 +7,8 @@ use azalea::pathfinder::GotoEvent;
 use azalea::pathfinder::astar::PathfinderTimeout;
 use azalea::pathfinder::goals::BlockPosGoal;
 use azalea::pathfinder::moves::default_move;
+use azalea::prelude::*;
 use azalea::swarm::prelude::*;
-use azalea::{BlockPos, prelude::*};
 use azalea::{chat::ChatPacket, entity::Position};
 use plugins::modules::auto_eat::AutoEatPlugin;
 use plugins::modules::auto_look::{self, AutoLookPlugin};
@@ -106,7 +106,7 @@ async fn handle(bot: Client, event: Event, state: State) -> Result<()> {
     Ok(())
 }
 
-async fn swarm_handle(swarm: Swarm, event: SwarmEvent, state: SwarmState) -> Result<()> {
+async fn swarm_handle(swarm: Swarm, event: SwarmEvent, _state: SwarmState) -> Result<()> {
     match &event {
         SwarmEvent::Disconnect(account, join_opts) => {
             info!(
@@ -130,11 +130,12 @@ async fn swarm_handle(swarm: Swarm, event: SwarmEvent, state: SwarmState) -> Res
     Ok(())
 }
 
-async fn handle_chat(bot: Client, state: State, chat: &ChatPacket) -> Result<()> {
-    let (username, content) = chat.split_sender_and_content();
+async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()> {
+    let content = chat.content();
 
     let parts: Vec<&str> = content.split_whitespace().collect();
 
+    #[allow(clippy::single_match)]
     match parts.as_slice() {
         ["!goto"] => {
             let error_fn = || {
