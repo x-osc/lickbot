@@ -15,8 +15,13 @@ impl Plugin for AutoLookPlugin {
     }
 }
 
+/// Component present when autolook is enabled
+#[derive(Component, Clone)]
+pub struct AutoLook;
+
+#[allow(clippy::type_complexity)]
 pub fn handle_auto_look(
-    query: Query<Entity, (With<Player>, With<LocalEntity>)>,
+    query: Query<Entity, (With<AutoLook>, With<Player>, With<LocalEntity>)>,
     entities: EntityFinder<With<Player>>,
     targets: Query<(&Position, Option<&EyeHeight>)>,
     mut look_at_events: EventWriter<LookAtEvent>,

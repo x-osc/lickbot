@@ -11,7 +11,7 @@ use azalea::swarm::prelude::*;
 use azalea::{BlockPos, prelude::*};
 use azalea::{chat::ChatPacket, entity::Position};
 use plugins::modules::auto_eat::AutoEatPlugin;
-use plugins::modules::auto_look::AutoLookPlugin;
+use plugins::modules::auto_look::{self, AutoLookPlugin};
 use plugins::modules::auto_totem::{self, AutoTotemPlugin};
 use plugins::modules::kill_aura::AutoKillPlugin;
 use tracing::{error, info};
@@ -85,13 +85,17 @@ async fn handle(bot: Client, event: Event, state: State) -> Result<()> {
                     .entity_mut(bot.entity)
                     .insert(azalea::pathfinder::PathfinderDebugParticles);
             }
+        }
+        Event::Spawn => {
+            info!("{} has logged in to world", bot.username());
             bot.ecs
                 .lock()
                 .entity_mut(bot.entity)
                 .insert(auto_totem::AutoTotem);
-        }
-        Event::Spawn => {
-            info!("{} has logged in to world", bot.username());
+            bot.ecs
+                .lock()
+                .entity_mut(bot.entity)
+                .insert(auto_look::AutoLook);
         }
         Event::Chat(chat) => handle_chat(bot, state, chat).await?,
         Event::Death(death) => {
