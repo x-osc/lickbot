@@ -18,7 +18,7 @@ use tracing::{error, info};
 
 const USERNAMES: [&str; 1] = ["lickbot"];
 const ADDRESS: &str = "localhost:25555";
-const PATHFINDER_DEBUG_PARTICLES: bool = false;
+const PATHFINDER_DEBUG_PARTICLES: bool = true;
 
 #[derive(Debug, Component, Clone, Default)]
 pub struct State {}
@@ -119,7 +119,12 @@ async fn swarm_handle(swarm: Swarm, event: SwarmEvent, _state: SwarmState) -> Re
                 .await;
         }
         SwarmEvent::Chat(chat) => {
-            if chat.message().to_string() == "The particle was not visible for anybody" {
+            if [
+                "The particle was not visible for anybody",
+                "Displaying particle minecraft:dust",
+            ]
+            .contains(&chat.message().to_string().as_str())
+            {
                 return Ok(());
             }
             println!("{}", chat.message().to_ansi())
