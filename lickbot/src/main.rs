@@ -1,8 +1,12 @@
+use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
 use anyhow::Result;
+use azalea::pathfinder::GotoEvent;
+use azalea::pathfinder::astar::PathfinderTimeout;
 use azalea::pathfinder::goals::BlockPosGoal;
+use azalea::pathfinder::moves::default_move;
 use azalea::swarm::prelude::*;
 use azalea::{BlockPos, prelude::*};
 use azalea::{chat::ChatPacket, entity::Position};
@@ -143,7 +147,15 @@ async fn handle_chat(bot: Client, state: State, chat: &ChatPacket) -> Result<()>
                 "going to location of {}",
                 chat.sender().ok_or_else(error_fn)?
             );
-            bot.goto(BlockPosGoal(BlockPos::from(position)));
+
+            bot.ecs.lock().send_event(GotoEvent {
+                entity: bot.entity,
+                goal: Arc::new(BlockPosGoal(position.into())),
+                successors_fn: default_move,
+                allow_mining: true,
+                min_timeout: PathfinderTimeout::Time(Duration::from_secs(1)),
+                max_timeout: PathfinderTimeout::Time(Duration::from_secs(10)),
+            });
         }
         _ => {}
     };
