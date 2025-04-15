@@ -6,10 +6,10 @@ use std::collections::HashMap;
 use std::sync::LazyLock;
 
 use azalea::app::{App, Plugin};
-use azalea::attack::AttackEvent;
+use azalea::attack::{AttackEvent, AttackStrengthScale};
 use azalea::ecs::prelude::*;
 use azalea::entity::metadata::{AbstractMonster, Player};
-use azalea::entity::{EyeHeight, LocalEntity, Position};
+use azalea::entity::{Dead, EyeHeight, LocalEntity, Position};
 use azalea::inventory::{
     Inventory, InventorySet, ItemStack, Menu, SetSelectedHotbarSlotEvent, components,
 };
@@ -19,7 +19,7 @@ use azalea::physics::PhysicsSet;
 use azalea::registry::Item;
 use azalea::world::MinecraftEntityId;
 use azalea::{LookAtEvent, Vec3, prelude::*};
-use tracing::debug;
+use tracing::{debug, error};
 
 /// Automatically swap weapon and attack nearby monsters
 pub struct AutoKillPlugin;
@@ -41,7 +41,8 @@ impl Plugin for AutoKillPlugin {
 #[allow(clippy::type_complexity)]
 pub fn handle_auto_kill(
     mut query: Query<(Entity, &Pathfinder), (With<Player>, With<LocalEntity>)>,
-    entities: EntityFinder<With<AbstractMonster>>,
+    attack_strengths: Query<&AttackStrengthScale, (With<Player>, With<LocalEntity>)>,
+    entities: EntityFinder<(With<AbstractMonster>, Without<LocalEntity>, Without<Dead>)>,
     targets: Query<(&MinecraftEntityId, &Position, Option<&EyeHeight>)>,
     mut look_at_events: EventWriter<LookAtEvent>,
     mut attack_events: EventWriter<AttackEvent>,
@@ -66,7 +67,13 @@ pub fn handle_auto_kill(
 
         look_at_events.send(LookAtEvent { entity, position });
 
-        // add delay here ?
+        if let Ok(AttackStrengthScale(scale)) = attack_strengths.get(entity) {
+            if *scale < 1.0 {
+                continue;
+            }
+        } else {
+            error!("player with killaura doesn't have AttackStrengthScale component");
+        };
 
         attack_events.send(AttackEvent {
             entity,
