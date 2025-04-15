@@ -1,2 +1,3 @@
  - clientext for autototem etc
  - check sightline for lookat
+ - add components for killaura and autoeat

@@ -10,7 +10,9 @@ use azalea::attack::AttackEvent;
 use azalea::ecs::prelude::*;
 use azalea::entity::metadata::{AbstractMonster, Player};
 use azalea::entity::{EyeHeight, LocalEntity, Position};
-use azalea::inventory::{Inventory, ItemStack, Menu, SetSelectedHotbarSlotEvent, components};
+use azalea::inventory::{
+    Inventory, InventorySet, ItemStack, Menu, SetSelectedHotbarSlotEvent, components,
+};
 use azalea::nearest_entity::EntityFinder;
 use azalea::pathfinder::Pathfinder;
 use azalea::physics::PhysicsSet;
@@ -27,8 +29,8 @@ impl Plugin for AutoKillPlugin {
         app.add_systems(
             GameTick,
             (
-                handle_auto_weapon,
-                handle_auto_kill.after(super::auto_look::handle_auto_look),
+                handle_auto_weapon.before(InventorySet),
+                handle_auto_kill.after(crate::modules::auto_look::handle_auto_look),
             )
                 .chain()
                 .before(PhysicsSet),

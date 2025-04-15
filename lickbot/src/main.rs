@@ -87,7 +87,7 @@ async fn handle(bot: Client, event: Event, state: State) -> Result<()> {
                 .insert(auto_totem::AutoTotem);
         }
         Event::Spawn => {
-            info!("logged in to world");
+            info!("{} has logged in to world", bot.username());
         }
         Event::Chat(chat) => handle_chat(bot, state, chat).await?,
         Event::Death(death) => {
