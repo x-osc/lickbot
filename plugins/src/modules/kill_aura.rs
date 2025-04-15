@@ -40,16 +40,19 @@ impl Plugin for AutoKillPlugin {
 
 #[allow(clippy::type_complexity)]
 pub fn handle_auto_kill(
-    mut query: Query<(Entity, &Pathfinder), (With<Player>, With<LocalEntity>)>,
+    mut query: Query<Entity, (With<Player>, With<LocalEntity>)>,
+    pathfinders: Query<&Pathfinder, (With<Player>, With<LocalEntity>)>,
     attack_strengths: Query<&AttackStrengthScale, (With<Player>, With<LocalEntity>)>,
     entities: EntityFinder<(With<AbstractMonster>, Without<LocalEntity>, Without<Dead>)>,
     targets: Query<(&MinecraftEntityId, &Position, Option<&EyeHeight>)>,
     mut look_at_events: EventWriter<LookAtEvent>,
     mut attack_events: EventWriter<AttackEvent>,
 ) {
-    for (entity, pathfinder) in &mut query {
-        if let Some(_goal) = &pathfinder.goal {
-            continue;
+    for entity in &mut query {
+        if let Ok(pathfinder) = pathfinders.get(entity) {
+            if pathfinder.goal.is_some() {
+                continue;
+            }
         }
 
         let Some(target) = entities.nearest_to_entity(entity, 3.2) else {
@@ -84,13 +87,16 @@ pub fn handle_auto_kill(
 
 #[allow(clippy::type_complexity)]
 fn handle_auto_weapon(
-    query: Query<(Entity, &Inventory, &Pathfinder), (With<Player>, With<LocalEntity>)>,
+    query: Query<(Entity, &Inventory), (With<Player>, With<LocalEntity>)>,
+    pathfinders: Query<&Pathfinder, (With<Player>, With<LocalEntity>)>,
     entities: EntityFinder<With<AbstractMonster>>,
     mut set_selected_hotbar_slot_events: EventWriter<SetSelectedHotbarSlotEvent>,
 ) {
-    for (entity, inventory, pathfinder) in &query {
-        if let Some(_goal) = &pathfinder.goal {
-            continue;
+    for (entity, inventory) in &query {
+        if let Ok(pathfinder) = pathfinders.get(entity) {
+            if pathfinder.goal.is_some() {
+                continue;
+            }
         }
 
         if entities.nearest_to_entity(entity, 3.2).is_none() {
