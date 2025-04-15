@@ -58,7 +58,8 @@ pub fn handle_auto_totem(
 
             if item_data.kind == Item::TotemOfUndying {
                 totem_index = Some(slot);
-                debug!("found totem at slot {}", slot)
+                debug!("found totem at slot {}", slot);
+                break;
             }
         }
 
