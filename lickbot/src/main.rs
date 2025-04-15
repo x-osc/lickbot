@@ -140,8 +140,25 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
 
     let parts: Vec<&str> = content.split_whitespace().collect();
 
-    #[allow(clippy::single_match)]
     match parts.as_slice() {
+        ["!ping"] => {
+            bot.chat("pong!");
+        }
+        ["!health"] => {
+            let health = bot.health();
+            bot.chat(&format!("health: {}", health));
+        }
+        ["!hunger"] => {
+            let hunger = bot.hunger();
+            bot.chat(&format!(
+                "hunger: {}, saturation: {}",
+                hunger.food, hunger.saturation
+            ));
+        }
+        ["!pos"] => {
+            let pos = bot.position();
+            bot.chat(&format!("x: {}, y: {}, z: {}", pos.x, pos.y, pos.z));
+        }
         ["!goto"] => {
             let error_fn = || {
                 error!("Got !goto, could not find sender");
