@@ -5,5 +5,5 @@ edition = "2024"
 
 [dependencies]
 anyhow = "1.0.97"
-azalea = { git = "https://github.com/x-osc/azalea", version = "*" }
+azalea = { git = "https://github.com/x-osc/azalea", version = "*", branch = "dev" }
 tracing = "0.1.41"
