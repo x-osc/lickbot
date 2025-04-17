@@ -2,13 +2,13 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use azalea::pathfinder::GotoEvent;
 use azalea::pathfinder::astar::PathfinderTimeout;
-use azalea::pathfinder::goals::BlockPosGoal;
+use azalea::pathfinder::goals::{BlockPosGoal, Goal, XZGoal, YGoal};
 use azalea::pathfinder::moves::default_move;
-use azalea::prelude::*;
 use azalea::swarm::prelude::*;
+use azalea::{BlockPos, prelude::*};
 use azalea::{chat::ChatPacket, entity::Position};
 use plugins::modules::auto_eat::AutoEatPlugin;
 use plugins::modules::auto_look::{self, AutoLookPlugin};
@@ -140,47 +140,73 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
 
     let parts: Vec<&str> = content.split_whitespace().collect();
 
-    match parts.as_slice() {
-        ["!ping"] => {
+    match *parts.as_slice().first().unwrap_or(&"") {
+        "!ping" => {
             bot.chat("pong!");
         }
-        ["!health"] => {
+        "!health" => {
             let health = bot.health();
             bot.chat(&format!("health: {}", health));
         }
-        ["!hunger"] => {
+        "!hunger" => {
             let hunger = bot.hunger();
             bot.chat(&format!(
                 "hunger: {}, saturation: {}",
                 hunger.food, hunger.saturation
             ));
         }
-        ["!pos"] => {
+        "!pos" => {
             let pos = bot.position();
             bot.chat(&format!("x: {}, y: {}, z: {}", pos.x, pos.y, pos.z));
         }
-        ["!goto"] => {
-            let error_fn = || {
-                error!("Got !goto, could not find sender");
-                anyhow::anyhow!("could not find message sender")
-            };
-            let uuid = chat.sender_uuid().ok_or_else(error_fn)?;
-            let entity = bot.entity_by_uuid(uuid).ok_or_else(error_fn)?;
-            let position = bot
-                .get_entity_component::<Position>(entity)
-                .ok_or_else(error_fn)?;
+        "!goto" => {
+            let goal: Arc<dyn Goal>;
 
-            info!(
-                "going to location of {}",
-                chat.sender().ok_or_else(error_fn)?
-            );
+            match parts.len() {
+                1 => {
+                    let error_fn = || {
+                        error!("Got !goto, could not find sender");
+                        anyhow::anyhow!("could not find message sender")
+                    };
+                    let uuid = chat.sender_uuid().ok_or_else(error_fn)?;
+                    let entity = bot.entity_by_uuid(uuid).ok_or_else(error_fn)?;
+                    let position = bot
+                        .get_entity_component::<Position>(entity)
+                        .ok_or_else(error_fn)?;
+
+                    goal = Arc::new(BlockPosGoal(position.into()));
+
+                    info!(
+                        "going to location of {}",
+                        chat.sender().ok_or_else(error_fn)?
+                    );
+                }
+                2 => {
+                    let y: i32 = parts[1].parse()?;
+                    goal = Arc::new(YGoal { y });
+                }
+                3 => {
+                    let x: i32 = parts[1].parse()?;
+                    let z: i32 = parts[2].parse()?;
+                    goal = Arc::new(XZGoal { x, z });
+                }
+                4 => {
+                    let x: i32 = parts[1].parse()?;
+                    let y: i32 = parts[2].parse()?;
+                    let z: i32 = parts[3].parse()?;
+                    goal = Arc::new(BlockPosGoal(BlockPos::new(x, y, z)));
+                }
+                _ => {
+                    return Err(anyhow!("Invalid number of arguments for !goto command"));
+                }
+            }
 
             bot.ecs.lock().send_event(GotoEvent {
                 entity: bot.entity,
-                goal: Arc::new(BlockPosGoal(position.into())),
+                goal,
                 successors_fn: default_move,
                 allow_mining: true,
-                min_timeout: PathfinderTimeout::Time(Duration::from_secs(1)),
+                min_timeout: PathfinderTimeout::Time(Duration::from_secs(2)),
                 max_timeout: PathfinderTimeout::Time(Duration::from_secs(10)),
             });
         }
