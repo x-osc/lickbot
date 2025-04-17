@@ -123,38 +123,72 @@ pub fn best_weapon_in_hotbar(menu: &Menu) -> usize {
     // TODO: return option
     weapon_slots
         .iter()
-        .max_by_key(|(_, item)| {
-            // damage from hashmap
-            if let Some(damage) = WEAPON_ITEMS.get(&item.kind()) {
-                return damage;
-            }
-
-            // if has durability -> lower
-            if let ItemStack::Present(item_data) = item {
-                if item_data.components.has::<components::Damage>() {
-                    return &-1;
-                }
-            }
-
-            &0
+        .max_by(|(_, item1), (_, item2)| {
+            let dps1 = get_dps(item1);
+            let dps2 = get_dps(item2);
+            dps1.partial_cmp(&dps2).unwrap_or(std::cmp::Ordering::Equal)
         })
         .expect("should have iterator of length 9 (hotbar)")
         .0
 }
 
-pub static WEAPON_ITEMS: LazyLock<HashMap<Item, i32>> = LazyLock::new(|| {
+fn get_dps(item: &ItemStack) -> f64 {
+    // damage from hashmap
+    if let Some(dps) = WEAPON_ITEMS.get(&item.kind()) {
+        return *dps;
+    }
+
+    // if has durability -> lower
+    if let ItemStack::Present(item_data) = item {
+        if item_data.components.has::<components::Damage>() {
+            return 1.;
+        }
+    }
+
+    // dps of fist against single target
+    2.
+}
+
+/// DPS of each weapon in the game
+/// https://minecraft.wiki/w/Damage#Dealing_damage
+pub static WEAPON_ITEMS: LazyLock<HashMap<Item, f64>> = LazyLock::new(|| {
     HashMap::from([
-        (Item::DiamondAxe, 9),
-        (Item::DiamondSword, 7),
-        (Item::GoldenAxe, 7),
-        (Item::GoldenSword, 4),
-        (Item::IronAxe, 9),
-        (Item::IronSword, 6),
-        (Item::NetheriteAxe, 10),
-        (Item::NetheriteSword, 8),
-        (Item::StoneAxe, 9),
-        (Item::StoneSword, 5),
-        (Item::WoodenAxe, 7),
-        (Item::WoodenSword, 4),
+        (Item::WoodenSword, 6.4),
+        (Item::GoldenSword, 6.4),
+        (Item::StoneSword, 8.),
+        (Item::IronSword, 9.6),
+        (Item::DiamondSword, 11.2),
+        (Item::NetheriteSword, 12.8),
+        //
+        (Item::WoodenAxe, 5.6),
+        (Item::GoldenAxe, 7.),
+        (Item::StoneAxe, 7.2),
+        (Item::IronAxe, 8.1),
+        (Item::DiamondAxe, 9.),
+        (Item::NetheriteAxe, 10.),
+        //
+        (Item::WoodenPickaxe, 2.4),
+        (Item::GoldenPickaxe, 2.4),
+        (Item::StonePickaxe, 3.6),
+        (Item::IronPickaxe, 4.8),
+        (Item::DiamondPickaxe, 6.),
+        (Item::NetheritePickaxe, 7.2),
+        //
+        (Item::WoodenShovel, 2.5),
+        (Item::GoldenShovel, 2.5),
+        (Item::StoneShovel, 3.5),
+        (Item::IronShovel, 4.5),
+        (Item::DiamondShovel, 5.5),
+        (Item::NetheriteShovel, 6.5),
+        //
+        (Item::WoodenHoe, 1.),
+        (Item::GoldenHoe, 1.),
+        (Item::StoneHoe, 2.),
+        (Item::IronHoe, 3.),
+        (Item::DiamondHoe, 4.),
+        (Item::NetheriteHoe, 4.),
+        //
+        (Item::Trident, 9.9),
+        (Item::Mace, 3.6),
     ])
 });
