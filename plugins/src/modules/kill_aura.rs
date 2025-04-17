@@ -5,11 +5,12 @@
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
-use azalea::app::{App, Plugin};
+use azalea::app::{App, Plugin, Update};
 use azalea::attack::{AttackEvent, AttackStrengthScale};
 use azalea::ecs::prelude::*;
 use azalea::entity::metadata::{AbstractMonster, Player};
 use azalea::entity::{Dead, EyeHeight, LocalEntity, Position};
+use azalea::events::LocalPlayerEvents;
 use azalea::inventory::{
     Inventory, InventorySet, ItemStack, Menu, SetSelectedHotbarSlotEvent, components,
 };
@@ -34,13 +35,29 @@ impl Plugin for AutoKillPlugin {
             )
                 .chain()
                 .before(PhysicsSet),
-        );
+        )
+        .add_systems(Update, insert_auto_kill);
+    }
+}
+
+/// Component present when auto kill is enabled.
+#[derive(Component, Clone)]
+pub struct AutoKill {
+    /// if true, will switch to the best weapon in hotbar
+    pub switch_weapon: bool,
+}
+
+impl Default for AutoKill {
+    fn default() -> Self {
+        Self {
+            switch_weapon: true,
+        }
     }
 }
 
 #[allow(clippy::type_complexity)]
 pub fn handle_auto_kill(
-    mut query: Query<Entity, (With<Player>, With<LocalEntity>)>,
+    mut query: Query<(Entity, &AutoKill), (With<Player>, With<LocalEntity>)>,
     pathfinders: Query<&Pathfinder, (With<Player>, With<LocalEntity>)>,
     attack_strengths: Query<&AttackStrengthScale, (With<Player>, With<LocalEntity>)>,
     entities: EntityFinder<(With<AbstractMonster>, Without<LocalEntity>, Without<Dead>)>,
@@ -48,7 +65,7 @@ pub fn handle_auto_kill(
     mut look_at_events: EventWriter<LookAtEvent>,
     mut attack_events: EventWriter<AttackEvent>,
 ) {
-    for entity in &mut query {
+    for (entity, _auto_kill) in &mut query {
         if let Ok(pathfinder) = pathfinders.get(entity) {
             if pathfinder.goal.is_some() {
                 continue;
@@ -87,12 +104,16 @@ pub fn handle_auto_kill(
 
 #[allow(clippy::type_complexity)]
 fn handle_auto_weapon(
-    query: Query<(Entity, &Inventory), (With<Player>, With<LocalEntity>)>,
+    query: Query<(Entity, &Inventory, &AutoKill), (With<Player>, With<LocalEntity>)>,
     pathfinders: Query<&Pathfinder, (With<Player>, With<LocalEntity>)>,
     entities: EntityFinder<With<AbstractMonster>>,
     mut set_selected_hotbar_slot_events: EventWriter<SetSelectedHotbarSlotEvent>,
 ) {
-    for (entity, inventory) in &query {
+    for (entity, inventory, auto_kill) in &query {
+        if !auto_kill.switch_weapon {
+            continue;
+        }
+
         if let Ok(pathfinder) = pathfinders.get(entity) {
             if pathfinder.goal.is_some() {
                 continue;
@@ -192,3 +213,46 @@ pub static WEAPON_ITEMS: LazyLock<HashMap<Item, f64>> = LazyLock::new(|| {
         (Item::Mace, 3.6),
     ])
 });
+
+#[allow(clippy::type_complexity)]
+fn insert_auto_kill(
+    mut commands: Commands,
+    mut query: Query<
+        Entity,
+        (
+            Without<AutoKill>,
+            With<Player>,
+            With<LocalEntity>,
+            // added when player logs in
+            Added<LocalPlayerEvents>,
+        ),
+    >,
+) {
+    for entity in &mut query {
+        commands.entity(entity).insert(AutoKill::default());
+    }
+}
+
+pub trait AutoKillClientExt {
+    /// Enable auto kill
+    fn enable_auto_kill(&self);
+    /// Disable auto kill
+    fn disable_auto_kill(&self);
+}
+
+impl AutoKillClientExt for Client {
+    fn enable_auto_kill(&self) {
+        if self.get_component::<AutoKill>().is_some() {
+            return;
+        }
+
+        self.ecs
+            .lock()
+            .entity_mut(self.entity)
+            .insert(AutoKill::default());
+    }
+
+    fn disable_auto_kill(&self) {
+        self.ecs.lock().entity_mut(self.entity).remove::<AutoKill>();
+    }
+}

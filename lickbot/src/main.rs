@@ -13,7 +13,7 @@ use azalea::{chat::ChatPacket, entity::Position};
 use plugins::modules::auto_eat::AutoEatPlugin;
 use plugins::modules::auto_look::{self, AutoLookPlugin};
 use plugins::modules::auto_totem::{self, AutoTotemPlugin};
-use plugins::modules::kill_aura::AutoKillPlugin;
+use plugins::modules::kill_aura::{AutoKillClientExt, AutoKillPlugin};
 use tracing::{error, info};
 
 const USERNAMES: [&str; 1] = ["lickbot"];
@@ -197,6 +197,7 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
                     goal = Arc::new(BlockPosGoal(BlockPos::new(x, y, z)));
                 }
                 _ => {
+                    info!("Invalid number of arguments for !goto command");
                     return Err(anyhow!("Invalid number of arguments for !goto command"));
                 }
             }
@@ -210,6 +211,20 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
                 max_timeout: PathfinderTimeout::Time(Duration::from_secs(10)),
             });
         }
+        "!killaura" => match parts.as_slice().get(1) {
+            Some(&"on") => {
+                bot.enable_auto_kill();
+                info!("killaura enabled!");
+            }
+            Some(&"off") => {
+                bot.disable_auto_kill();
+                info!("killaura disabled!");
+            }
+            _ => {
+                info!("Invalid arguments for !killaura command");
+                return Err(anyhow!("Invalid arguments for !killaura command"));
+            }
+        },
         _ => {}
     };
 
