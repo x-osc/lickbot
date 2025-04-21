@@ -4,10 +4,10 @@ use std::thread;
 use std::time::Duration;
 
 use anyhow::{Result, anyhow};
-use azalea::pathfinder::GotoEvent;
 use azalea::pathfinder::astar::PathfinderTimeout;
 use azalea::pathfinder::goals::{BlockPosGoal, Goal, XZGoal, YGoal};
 use azalea::pathfinder::moves::default_move;
+use azalea::pathfinder::{self, GotoEvent};
 use azalea::registry::EntityKind;
 use azalea::swarm::prelude::*;
 use azalea::{BlockPos, prelude::*};
@@ -81,12 +81,12 @@ async fn handle(bot: Client, event: Event, state: State) -> Result<()> {
                 view_distance: 32,
                 ..Default::default()
             })
-            .await?;
+            .await;
             if PATHFINDER_DEBUG_PARTICLES {
                 bot.ecs
                     .lock()
                     .entity_mut(bot.entity)
-                    .insert(azalea::pathfinder::PathfinderDebugParticles);
+                    .insert(pathfinder::debug::PathfinderDebugParticles);
             }
         }
         Event::Spawn => {
