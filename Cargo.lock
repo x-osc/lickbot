@@ -2155,6 +2155,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "azalea",
+ "bevy_ecs",
  "tracing",
 ]
 

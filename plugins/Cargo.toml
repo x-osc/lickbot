@@ -6,4 +6,5 @@ edition = "2024"
 [dependencies]
 anyhow = "1.0.97"
 azalea = { git = "https://github.com/x-osc/azalea", version = "*", branch = "dev" }
+bevy_ecs = { version = "0.15.3", default-features = false }
 tracing = "0.1.41"

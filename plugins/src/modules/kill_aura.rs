@@ -9,7 +9,7 @@ use azalea::app::{App, Plugin, Update};
 use azalea::attack::{AttackEvent, AttackStrengthScale};
 use azalea::ecs::prelude::*;
 use azalea::entity::metadata::{AbstractMonster, Player};
-use azalea::entity::{Dead, EyeHeight, LocalEntity, Position};
+use azalea::entity::{EyeHeight, LocalEntity, Position};
 use azalea::events::LocalPlayerEvents;
 use azalea::inventory::{
     Inventory, InventorySet, ItemStack, Menu, SetSelectedHotbarSlotEvent, components,
@@ -21,6 +21,8 @@ use azalea::registry::Item;
 use azalea::world::MinecraftEntityId;
 use azalea::{LookAtEvent, Vec3, prelude::*};
 use tracing::{debug, error};
+
+use crate::utils::entity_target::{EntityTarget, EntityTargets, TargetFinder};
 
 /// Automatically swap weapon and attack nearby monsters
 pub struct AutoKillPlugin;
@@ -45,12 +47,15 @@ impl Plugin for AutoKillPlugin {
 pub struct AutoKill {
     /// if true, will switch to the best weapon in hotbar
     pub switch_weapon: bool,
+    /// target to attack
+    pub target: EntityTargets,
 }
 
 impl Default for AutoKill {
     fn default() -> Self {
         Self {
             switch_weapon: true,
+            target: EntityTargets::new(&[EntityTarget::AllMonsters]),
         }
     }
 }
@@ -60,23 +65,24 @@ pub fn handle_auto_kill(
     mut query: Query<(Entity, &AutoKill), (With<Player>, With<LocalEntity>)>,
     pathfinders: Query<&Pathfinder, (With<Player>, With<LocalEntity>)>,
     attack_strengths: Query<&AttackStrengthScale, (With<Player>, With<LocalEntity>)>,
-    entities: EntityFinder<(With<AbstractMonster>, Without<LocalEntity>, Without<Dead>)>,
-    targets: Query<(&MinecraftEntityId, &Position, Option<&EyeHeight>)>,
+
+    targets: TargetFinder,
+    positions: Query<(&MinecraftEntityId, &Position, Option<&EyeHeight>)>,
     mut look_at_events: EventWriter<LookAtEvent>,
     mut attack_events: EventWriter<AttackEvent>,
 ) {
-    for (entity, _auto_kill) in &mut query {
+    for (entity, auto_kill) in &mut query {
         if let Ok(pathfinder) = pathfinders.get(entity) {
             if pathfinder.goal.is_some() {
                 continue;
             }
         }
 
-        let Some(target) = entities.nearest_to_entity(entity, 3.2) else {
+        let Some(target) = targets.nearest_to_entity(entity, &auto_kill.target, 3.2) else {
             continue;
         };
 
-        let Ok((target_id, target_pos, maybe_eye_height)) = targets.get(target) else {
+        let Ok((target_id, target_pos, maybe_eye_height)) = positions.get(target) else {
             continue;
         };
 
