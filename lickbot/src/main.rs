@@ -1,3 +1,4 @@
+use std::str::FromStr;
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
@@ -7,6 +8,7 @@ use azalea::pathfinder::GotoEvent;
 use azalea::pathfinder::astar::PathfinderTimeout;
 use azalea::pathfinder::goals::{BlockPosGoal, Goal, XZGoal, YGoal};
 use azalea::pathfinder::moves::default_move;
+use azalea::registry::EntityKind;
 use azalea::swarm::prelude::*;
 use azalea::{BlockPos, prelude::*};
 use azalea::{chat::ChatPacket, entity::Position};
@@ -35,7 +37,7 @@ async fn main() {
         .add_plugins(AutoLookPlugin)
         .add_plugins(AutoTotemPlugin)
         .add_plugins(AutoKillPlugin)
-        .add_plugins(AutoEatPlugin)
+        // .add_plugins(AutoEatPlugin)
         .set_handler(handle)
         .set_swarm_handler(swarm_handle)
         .join_delay(Duration::from_secs(5));
@@ -212,10 +214,39 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
                 max_timeout: PathfinderTimeout::Time(Duration::from_secs(10)),
             });
         }
-        "!killaura" => match parts.as_slice().get(1) {
+        "!killaura" => match parts.get(1) {
             Some(&"on") => {
-                bot.enable_auto_kill(EntityTargets::new(&[EntityTarget::AllMonsters]));
-                info!("killaura enabled!");
+                let target = match parts.get(2) {
+                    Some(&"hostile") => EntityTarget::AllMonsters,
+                    Some(&"players") => EntityTarget::AllPlayers,
+                    Some(&"entity") => {
+                        let entity_name = parts.get(3).ok_or_else(|| {
+                            error!("!killaura entity requires an entity name");
+                            anyhow!("!killaura entity requires an entity name")
+                        })?;
+                        EntityTarget::EntityKind(
+                            EntityKind::from_str(&("minecraft:".to_owned() + *entity_name))
+                                .map_err(|_| {
+                                    error!("Invalid entity name: {}", entity_name);
+                                    anyhow!("Invalid entity name: {}", entity_name)
+                                })?,
+                        )
+                    }
+                    Some(&"player") => {
+                        let player_name = parts.get(3).ok_or_else(|| {
+                            error!("!killaura player requires a player name");
+                            anyhow!("!killaura player requires a player name")
+                        })?;
+                        EntityTarget::PlayerName(player_name.to_string())
+                    }
+                    _ => {
+                        info!("Invalid arguments for !killaura command");
+                        return Err(anyhow!("Invalid arguments for !killaura command"));
+                    }
+                };
+
+                info!("killaura enabled for target {:?}!", &target);
+                bot.enable_auto_kill(EntityTargets::new(&[target]));
             }
             Some(&"off") => {
                 bot.disable_auto_kill();

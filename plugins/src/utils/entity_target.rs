@@ -9,7 +9,7 @@ use bevy_ecs::system::SystemParam;
 
 /// A single entity target. This can be a specific entity, a player name, or a
 /// entity type.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum EntityTarget {
     EntityKind(registry::EntityKind),
     EntityId(MinecraftEntityId),
@@ -20,7 +20,7 @@ pub enum EntityTarget {
 
 /// A collection of entity targets. This is used to find entities that match
 /// the given targets.
-#[derive(Clone, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct EntityTargets(Vec<EntityTarget>);
 
 impl EntityTargets {
