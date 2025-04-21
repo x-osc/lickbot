@@ -7,6 +7,8 @@ use azalea::{GameProfileComponent, registry};
 use bevy_ecs::prelude::*;
 use bevy_ecs::system::SystemParam;
 
+/// A single entity target. This can be a specific entity, a player name, or a
+/// entity type.
 #[derive(Clone)]
 pub enum EntityTarget {
     EntityKind(registry::EntityKind),
@@ -16,6 +18,8 @@ pub enum EntityTarget {
     AllPlayers,
 }
 
+/// A collection of entity targets. This is used to find entities that match
+/// the given targets.
 #[derive(Clone, Default)]
 pub struct EntityTargets(Vec<EntityTarget>);
 
@@ -52,6 +56,8 @@ type TargetsQuery<'w, 's> = Query<
     (With<MinecraftEntityId>, Without<Dead>, Without<LocalEntity>),
 >;
 
+/// Checks if the given entity is in the targets list.
+/// Returns true if the entity is in the targets list, false otherwise.
 fn is_entity_in_targets(entity: &Entity, targets: &EntityTargets, query: &TargetsQuery) -> bool {
     for target in targets.iter() {
         let Ok((_entity, entity_kind, entity_id, game_profile, monster)) = query.get(*entity)
@@ -98,6 +104,8 @@ fn is_entity_in_targets(entity: &Entity, targets: &EntityTargets, query: &Target
 }
 
 /// This system parameter can be used as a to find [`EntityTarget`]s close to a given position.
+///
+/// ref: [`EntityFinder`](azalea::nearest_entity::EntityFinder)
 #[derive(SystemParam)]
 pub struct TargetFinder<'w, 's> {
     all_entities:
