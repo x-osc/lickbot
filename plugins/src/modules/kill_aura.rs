@@ -238,8 +238,6 @@ fn insert_auto_kill(
         Entity,
         (
             Without<AutoKill>,
-            With<Player>,
-            With<LocalEntity>,
             // added when player logs in
             Added<LocalPlayerEvents>,
         ),
