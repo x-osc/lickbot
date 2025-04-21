@@ -48,14 +48,14 @@ pub struct AutoKill {
     /// if true, will switch to the best weapon in hotbar
     pub switch_weapon: bool,
     /// target to attack
-    pub target: EntityTargets,
+    pub targets: EntityTargets,
 }
 
 impl Default for AutoKill {
     fn default() -> Self {
         Self {
             switch_weapon: true,
-            target: EntityTargets::new(&[EntityTarget::AllMonsters]),
+            targets: EntityTargets::new(&[EntityTarget::AllMonsters]),
         }
     }
 }
@@ -78,7 +78,7 @@ pub fn handle_auto_kill(
             }
         }
 
-        let Some(target) = targets.nearest_to_entity(entity, &auto_kill.target, 3.2) else {
+        let Some(target) = targets.nearest_to_entity(entity, &auto_kill.targets, 3.2) else {
             continue;
         };
 
@@ -241,21 +241,21 @@ fn insert_auto_kill(
 
 pub trait AutoKillClientExt {
     /// Enable auto kill
-    fn enable_auto_kill(&self);
+    fn enable_auto_kill(&self, targets: EntityTargets);
     /// Disable auto kill
     fn disable_auto_kill(&self);
 }
 
 impl AutoKillClientExt for Client {
-    fn enable_auto_kill(&self) {
+    fn enable_auto_kill(&self, targets: EntityTargets) {
         if self.get_component::<AutoKill>().is_some() {
             return;
         }
 
-        self.ecs
-            .lock()
-            .entity_mut(self.entity)
-            .insert(AutoKill::default());
+        self.ecs.lock().entity_mut(self.entity).insert(AutoKill {
+            targets,
+            ..Default::default()
+        });
     }
 
     fn disable_auto_kill(&self) {

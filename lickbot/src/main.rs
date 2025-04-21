@@ -14,6 +14,7 @@ use plugins::modules::auto_eat::AutoEatPlugin;
 use plugins::modules::auto_look::{self, AutoLookPlugin};
 use plugins::modules::auto_totem::{self, AutoTotemPlugin};
 use plugins::modules::kill_aura::{AutoKillClientExt, AutoKillPlugin};
+use plugins::utils::entity_target::{EntityTarget, EntityTargets};
 use tracing::{error, info};
 
 const USERNAMES: [&str; 1] = ["lickbot"];
@@ -213,7 +214,7 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
         }
         "!killaura" => match parts.as_slice().get(1) {
             Some(&"on") => {
-                bot.enable_auto_kill();
+                bot.enable_auto_kill(EntityTargets::new(&[EntityTarget::AllMonsters]));
                 info!("killaura enabled!");
             }
             Some(&"off") => {
