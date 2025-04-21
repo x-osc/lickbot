@@ -12,11 +12,11 @@ use azalea::registry::EntityKind;
 use azalea::swarm::prelude::*;
 use azalea::{BlockPos, prelude::*};
 use azalea::{chat::ChatPacket, entity::Position};
-use plugins::modules::auto_eat::AutoEatPlugin;
-use plugins::modules::auto_look::{self, AutoLookPlugin};
-use plugins::modules::auto_totem::{self, AutoTotemPlugin};
-use plugins::modules::kill_aura::{AutoKillClientExt, AutoKillPlugin};
-use plugins::utils::entity_target::{EntityTarget, EntityTargets};
+use lickbot_plugins::modules::auto_eat::AutoEatPlugin;
+use lickbot_plugins::modules::auto_look::{self, AutoLookPlugin};
+use lickbot_plugins::modules::auto_totem::{self, AutoTotemPlugin};
+use lickbot_plugins::modules::kill_aura::{AutoKillClientExt, AutoKillPlugin};
+use lickbot_plugins::utils::entity_target::{EntityTarget, EntityTargets};
 use tracing::{error, info};
 
 const USERNAMES: [&str; 1] = ["lickbot"];

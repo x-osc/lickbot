@@ -1740,9 +1740,19 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "azalea",
+ "lickbot-plugins",
  "parking_lot",
- "plugins",
  "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "lickbot-plugins"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "azalea",
+ "bevy_ecs",
  "tracing",
 ]
 
@@ -2147,16 +2157,6 @@ checksum = "f950b2377845cebe5cf8b5165cb3cc1a5e0fa5cfa3e1f7f55707d8fd82e0a7b7"
 dependencies = [
  "der",
  "spki",
-]
-
-[[package]]
-name = "plugins"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "azalea",
- "bevy_ecs",
- "tracing",
 ]
 
 [[package]]
