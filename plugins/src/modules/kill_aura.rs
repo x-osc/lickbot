@@ -47,6 +47,9 @@ impl Plugin for AutoKillPlugin {
 pub struct AutoKill {
     /// if true, will switch to the best weapon in hotbar
     pub switch_weapon: bool,
+    /// if true, will knock back the target when close
+    /// (will attack when charge is not refilled and target is close)
+    pub knock_back_when_close: bool,
     /// target to attack
     pub targets: EntityTargets,
 }
@@ -55,6 +58,7 @@ impl Default for AutoKill {
     fn default() -> Self {
         Self {
             switch_weapon: true,
+            knock_back_when_close: true,
             targets: EntityTargets::new(&[EntityTarget::AllMonsters]),
         }
     }
@@ -93,13 +97,20 @@ pub fn handle_auto_kill(
 
         look_at_events.send(LookAtEvent { entity, position });
 
-        if let Ok(AttackStrengthScale(scale)) = attack_strengths.get(entity) {
-            if *scale < 1.0 {
-                continue;
-            }
-        } else {
-            error!("player with killaura doesn't have AttackStrengthScale component");
-        };
+        // if target is within 0.7 blocks, try to knock it away, even if charge is not refilled
+        if !(auto_kill.knock_back_when_close
+            && targets
+                .nearest_to_entity(entity, &auto_kill.targets, 0.7)
+                .is_some())
+        {
+            if let Ok(AttackStrengthScale(scale)) = attack_strengths.get(entity) {
+                if *scale < 1.0 {
+                    continue;
+                }
+            } else {
+                error!("player with killaura doesn't have AttackStrengthScale component");
+            };
+        }
 
         attack_events.send(AttackEvent {
             entity,
@@ -248,9 +259,7 @@ pub trait AutoKillClientExt {
 
 impl AutoKillClientExt for Client {
     fn enable_auto_kill(&self, targets: EntityTargets) {
-        if self.get_component::<AutoKill>().is_some() {
-            return;
-        }
+        self.ecs.lock().entity_mut(self.entity).remove::<AutoKill>();
 
         self.ecs.lock().entity_mut(self.entity).insert(AutoKill {
             targets,
