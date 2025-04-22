@@ -8,13 +8,12 @@ use std::sync::LazyLock;
 use azalea::app::{App, Plugin, Update};
 use azalea::attack::{AttackEvent, AttackStrengthScale};
 use azalea::ecs::prelude::*;
-use azalea::entity::metadata::{AbstractMonster, Player};
+use azalea::entity::metadata::Player;
 use azalea::entity::{EyeHeight, LocalEntity, Position};
 use azalea::events::LocalPlayerEvents;
 use azalea::inventory::{
     Inventory, InventorySet, ItemStack, Menu, SetSelectedHotbarSlotEvent, components,
 };
-use azalea::nearest_entity::EntityFinder;
 use azalea::pathfinder::Pathfinder;
 use azalea::physics::PhysicsSet;
 use azalea::registry::Item;
@@ -31,11 +30,9 @@ impl Plugin for AutoKillPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             GameTick,
-            (
-                handle_auto_weapon.before(InventorySet),
-                handle_auto_kill.after(crate::modules::auto_look::handle_auto_look),
-            )
-                .chain()
+            handle_auto_kill
+                .after(crate::modules::auto_look::handle_auto_look)
+                .before(InventorySet)
                 .before(PhysicsSet),
         )
         .add_systems(Update, insert_auto_kill);
@@ -66,17 +63,20 @@ impl Default for AutoKill {
 
 #[allow(clippy::type_complexity)]
 pub fn handle_auto_kill(
-    mut query: Query<(Entity, &AutoKill), (With<Player>, With<LocalEntity>)>,
-    pathfinders: Query<&Pathfinder, (With<Player>, With<LocalEntity>)>,
+    mut query: Query<
+        (Entity, &AutoKill, Option<&Inventory>, Option<&Pathfinder>),
+        (With<Player>, With<LocalEntity>),
+    >,
     attack_strengths: Query<&AttackStrengthScale, (With<Player>, With<LocalEntity>)>,
 
     targets: TargetFinder,
     positions: Query<(&MinecraftEntityId, &Position, Option<&EyeHeight>)>,
     mut look_at_events: EventWriter<LookAtEvent>,
     mut attack_events: EventWriter<AttackEvent>,
+    mut set_selected_hotbar_slot_events: EventWriter<SetSelectedHotbarSlotEvent>,
 ) {
-    for (entity, auto_kill) in &mut query {
-        if let Ok(pathfinder) = pathfinders.get(entity) {
+    for (entity, auto_kill, inventory, pathfinder) in &mut query {
+        if let Some(pathfinder) = pathfinder {
             if pathfinder.goal.is_some() {
                 continue;
             }
@@ -112,32 +112,9 @@ pub fn handle_auto_kill(
             };
         }
 
-        attack_events.send(AttackEvent {
-            entity,
-            target: *target_id,
-        });
-    }
-}
-
-#[allow(clippy::type_complexity)]
-fn handle_auto_weapon(
-    query: Query<(Entity, &Inventory, &AutoKill), (With<Player>, With<LocalEntity>)>,
-    pathfinders: Query<&Pathfinder, (With<Player>, With<LocalEntity>)>,
-    entities: EntityFinder<With<AbstractMonster>>,
-    mut set_selected_hotbar_slot_events: EventWriter<SetSelectedHotbarSlotEvent>,
-) {
-    for (entity, inventory, auto_kill) in &query {
-        if !auto_kill.switch_weapon {
-            continue;
-        }
-
-        if let Ok(pathfinder) = pathfinders.get(entity) {
-            if pathfinder.goal.is_some() {
-                continue;
-            }
-        }
-
-        if entities.nearest_to_entity(entity, 3.2).is_none() {
+        // switch weapon
+        let Some(inventory) = inventory else {
+            error!("player with killaura doesn't have Inventory component");
             continue;
         };
 
@@ -149,6 +126,11 @@ fn handle_auto_weapon(
                 slot: best_slot,
             });
         }
+
+        attack_events.send(AttackEvent {
+            entity,
+            target: *target_id,
+        });
     }
 }
 
