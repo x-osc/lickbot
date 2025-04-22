@@ -4,6 +4,7 @@
 
 use std::collections::HashMap;
 use std::sync::LazyLock;
+use std::time::Instant;
 
 use azalea::app::{App, Plugin, Update};
 use azalea::attack::{AttackEvent, AttackStrengthScale};
@@ -19,7 +20,7 @@ use azalea::physics::PhysicsSet;
 use azalea::registry::Item;
 use azalea::world::MinecraftEntityId;
 use azalea::{LookAtEvent, Vec3, prelude::*};
-use tracing::{debug, error};
+use tracing::{debug, error, trace};
 
 use crate::utils::entity_target::{EntityTarget, EntityTargets, TargetFinder};
 
@@ -85,6 +86,8 @@ pub fn handle_auto_kill(
     mut set_selected_hotbar_slot_events: EventWriter<SetSelectedHotbarSlotEvent>,
 ) {
     for (entity, mut auto_kill, inventory, pathfinder) in &mut query {
+        let start = Instant::now();
+
         auto_kill.is_attacking = false;
 
         if let Some(pathfinder) = pathfinder {
@@ -143,6 +146,9 @@ pub fn handle_auto_kill(
             entity,
             target: *target_id,
         });
+
+        let duration = start.elapsed();
+        trace!("AutoKill took {:?}", duration);
     }
 }
 
