@@ -34,6 +34,7 @@ impl Plugin for AutoEatPlugin {
         app.add_systems(
             GameTick,
             handle_auto_eat
+                .after(crate::modules::kill_aura::handle_auto_kill)
                 .before(handle_outgoing_packets)
                 .before(continue_mining_block)
                 .before(InventorySet)
