@@ -49,6 +49,9 @@ pub struct AutoKill {
     pub knock_back_when_close: bool,
     /// target to attack
     pub targets: EntityTargets,
+
+    /// whether currently attacking a target
+    pub is_attacking: bool,
 }
 
 impl Default for AutoKill {
@@ -57,6 +60,7 @@ impl Default for AutoKill {
             switch_weapon: true,
             knock_back_when_close: true,
             targets: EntityTargets::new(&[EntityTarget::AllMonsters]),
+            is_attacking: false,
         }
     }
 }
@@ -64,7 +68,12 @@ impl Default for AutoKill {
 #[allow(clippy::type_complexity)]
 pub fn handle_auto_kill(
     mut query: Query<
-        (Entity, &AutoKill, Option<&Inventory>, Option<&Pathfinder>),
+        (
+            Entity,
+            &mut AutoKill,
+            Option<&Inventory>,
+            Option<&Pathfinder>,
+        ),
         (With<Player>, With<LocalEntity>),
     >,
     attack_strengths: Query<&AttackStrengthScale, (With<Player>, With<LocalEntity>)>,
@@ -75,7 +84,9 @@ pub fn handle_auto_kill(
     mut attack_events: EventWriter<AttackEvent>,
     mut set_selected_hotbar_slot_events: EventWriter<SetSelectedHotbarSlotEvent>,
 ) {
-    for (entity, auto_kill, inventory, pathfinder) in &mut query {
+    for (entity, mut auto_kill, inventory, pathfinder) in &mut query {
+        auto_kill.is_attacking = false;
+
         if let Some(pathfinder) = pathfinder {
             if pathfinder.goal.is_some() {
                 continue;
@@ -95,6 +106,7 @@ pub fn handle_auto_kill(
             position.y += f64::from(eye_height);
         }
 
+        auto_kill.is_attacking = true;
         look_at_events.send(LookAtEvent { entity, position });
 
         // if target is within 0.7 blocks, try to knock it away, even if charge is not refilled

@@ -37,7 +37,7 @@ async fn main() {
         .add_plugins(AutoLookPlugin)
         .add_plugins(AutoTotemPlugin)
         .add_plugins(AutoKillPlugin)
-        // .add_plugins(AutoEatPlugin)
+        .add_plugins(AutoEatPlugin)
         .set_handler(handle)
         .set_swarm_handler(swarm_handle)
         .join_delay(Duration::from_secs(5));
