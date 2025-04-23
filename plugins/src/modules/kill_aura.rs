@@ -194,7 +194,7 @@ fn get_dps(item: &ItemStack, do_fancy_calculation: bool) -> f64 {
     if do_fancy_calculation {
         // take average of attack speed and capped attack speed
         let dps = damage * (attack_speed + capped_attack_speed) / 2.0;
-        // multiply dps by 1.(attack_speed) to make faster attacks speed more valuable
+        // multiply dps by 1.(attack_speed) to make faster attack speed more valuable
         let new_dps = dps * (1. + capped_attack_speed / 10.0);
 
         #[allow(clippy::let_and_return)]
