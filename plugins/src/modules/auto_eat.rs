@@ -10,7 +10,7 @@ use azalea::{
     ecs::prelude::*,
     entity::{LocalEntity, LookDirection, metadata::Player},
     inventory::{
-        ContainerClickEvent, Inventory, InventorySet,
+        ContainerClickEvent, Inventory, InventorySet, SetSelectedHotbarSlotEvent,
         operations::{ClickOperation, SwapClick},
     },
     mining::continue_mining_block,
@@ -22,7 +22,7 @@ use azalea::{
     },
     registry::Item,
 };
-use tracing::debug;
+use tracing::{debug, trace};
 
 use crate::modules::kill_aura::AutoKill;
 
@@ -57,6 +57,7 @@ pub fn handle_auto_eat(
     >,
     mut packet_events: EventWriter<SendPacketEvent>,
     mut container_click_events: EventWriter<ContainerClickEvent>,
+    mut set_selected_hotbar_slot_events: EventWriter<SetSelectedHotbarSlotEvent>,
 ) {
     for (entity, hunger, inventory, direction, auto_kill) in &mut query {
         // dont eat if killing
@@ -70,38 +71,45 @@ pub fn handle_auto_eat(
             continue;
         }
 
-        if !FOOD_ITEMS.contains_key(&inventory.held_item().kind()) {
-            let mut food_slots = Vec::new();
+        let mut food_slots = Vec::new();
 
-            for slot in inventory.inventory_menu.player_slots_range() {
-                let Some(item) = inventory.inventory_menu.slot(slot) else {
-                    continue;
-                };
+        for slot in inventory.inventory_menu.player_slots_range() {
+            let Some(item) = inventory.inventory_menu.slot(slot) else {
+                continue;
+            };
 
-                if let Some((nutrition, saturation)) = FOOD_ITEMS.get(&item.kind()) {
-                    food_slots.push((slot, *nutrition, *saturation));
-                }
+            if let Some((nutrition, saturation)) = FOOD_ITEMS.get(&item.kind()) {
+                food_slots.push((slot, item.kind(), *nutrition, *saturation));
             }
+        }
 
-            food_slots.sort_by(|a, b| {
-                b.2.partial_cmp(&a.2)
-                    .unwrap_or(Ordering::Equal)
-                    .then_with(|| b.1.cmp(&a.1))
+        let best_food = food_slots.iter().max_by(|a, b| {
+            b.3.partial_cmp(&a.3)
+                .unwrap_or(Ordering::Equal)
+                .then_with(|| b.2.cmp(&a.2))
+        });
+
+        let Some((best_slot, best_item, _, _)) = best_food else {
+            trace!("No food found in inventory");
+            continue;
+        };
+
+        if *best_item != inventory.held_item().kind() {
+            // slot num is 0 indexed
+            debug!("Swapping Food from {best_slot} and selecting slot {}", 9);
+
+            container_click_events.send(ContainerClickEvent {
+                entity,
+                window_id: inventory.id,
+                operation: ClickOperation::Swap(SwapClick {
+                    source_slot: *best_slot as u16,
+                    target_slot: 8,
+                }),
             });
 
-            if let Some((slot, _, _)) = food_slots.first() {
-                debug!(
-                    "Swapping Food from {slot} to {}",
-                    inventory.selected_hotbar_slot
-                );
-                container_click_events.send(ContainerClickEvent {
-                    entity,
-                    window_id: inventory.id,
-                    operation: ClickOperation::Swap(SwapClick {
-                        source_slot: u16::try_from(*slot).unwrap(),
-                        target_slot: inventory.selected_hotbar_slot,
-                    }),
-                });
+            if inventory.selected_hotbar_slot != 8 {
+                set_selected_hotbar_slot_events
+                    .send(SetSelectedHotbarSlotEvent { entity, slot: 8 });
             }
         }
 
