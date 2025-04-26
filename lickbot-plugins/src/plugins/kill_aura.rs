@@ -32,7 +32,7 @@ impl Plugin for AutoKillPlugin {
         app.add_systems(
             GameTick,
             handle_auto_kill
-                .after(crate::modules::auto_look::handle_auto_look)
+                .after(crate::plugins::auto_look::handle_auto_look)
                 .before(InventorySet)
                 .before(PhysicsSet),
         )

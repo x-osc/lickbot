@@ -24,7 +24,7 @@ use azalea::{
 };
 use tracing::{debug, trace};
 
-use crate::modules::kill_aura::AutoKill;
+use crate::plugins::kill_aura::AutoKill;
 
 /// Automatically eat food to avoid starving to death
 pub struct AutoEatPlugin;
@@ -34,7 +34,7 @@ impl Plugin for AutoEatPlugin {
         app.add_systems(
             GameTick,
             handle_auto_eat
-                .after(crate::modules::kill_aura::handle_auto_kill)
+                .after(crate::plugins::kill_aura::handle_auto_kill)
                 .before(handle_outgoing_packets)
                 .before(continue_mining_block)
                 .before(InventorySet)
