@@ -92,6 +92,7 @@ async fn handle(bot: Client, event: Event, state: State) -> Result<()> {
         }
         Event::Spawn => {
             info!("{} has logged in to world", bot.username());
+            bot.enable_auto_kill(EntityTargets::new(&[EntityTarget::AllMonsters]));
             bot.ecs
                 .lock()
                 .entity_mut(bot.entity)

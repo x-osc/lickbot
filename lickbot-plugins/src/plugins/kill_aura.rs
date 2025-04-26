@@ -6,12 +6,11 @@ use std::collections::HashMap;
 use std::sync::LazyLock;
 use std::time::Instant;
 
-use azalea::app::{App, Plugin, Update};
+use azalea::app::{App, Plugin};
 use azalea::attack::{AttackEvent, AttackStrengthScale};
 use azalea::ecs::prelude::*;
 use azalea::entity::metadata::Player;
 use azalea::entity::{EyeHeight, LocalEntity, Position};
-use azalea::events::LocalPlayerEvents;
 use azalea::inventory::{
     Inventory, InventorySet, ItemStack, Menu, SetSelectedHotbarSlotEvent, components,
 };
@@ -35,8 +34,7 @@ impl Plugin for AutoKillPlugin {
                 .after(crate::plugins::auto_look::handle_auto_look)
                 .before(InventorySet)
                 .before(PhysicsSet),
-        )
-        .add_systems(Update, insert_auto_kill);
+        );
     }
 }
 
@@ -247,23 +245,6 @@ pub static WEAPON_ITEMS: LazyLock<HashMap<Item, (f64, f64)>> = LazyLock::new(|| 
         (Item::Mace, (6., 0.6)),
     ])
 });
-
-#[allow(clippy::type_complexity)]
-fn insert_auto_kill(
-    mut commands: Commands,
-    mut query: Query<
-        Entity,
-        (
-            Without<AutoKill>,
-            // added when player logs in
-            Added<LocalPlayerEvents>,
-        ),
-    >,
-) {
-    for entity in &mut query {
-        commands.entity(entity).insert(AutoKill::default());
-    }
-}
 
 pub trait AutoKillClientExt {
     /// Enable auto kill
