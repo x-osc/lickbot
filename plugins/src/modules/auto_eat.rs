@@ -98,7 +98,7 @@ pub fn handle_auto_eat(
             // slot num is 0 indexed
             debug!("Swapping Food from {best_slot} and selecting slot {}", 9);
 
-            container_click_events.send(ContainerClickEvent {
+            container_click_events.write(ContainerClickEvent {
                 entity,
                 window_id: inventory.id,
                 operation: ClickOperation::Swap(SwapClick {
@@ -109,7 +109,7 @@ pub fn handle_auto_eat(
 
             if inventory.selected_hotbar_slot != 8 {
                 set_selected_hotbar_slot_events
-                    .send(SetSelectedHotbarSlotEvent { entity, slot: 8 });
+                    .write(SetSelectedHotbarSlotEvent { entity, slot: 8 });
             }
         }
 
@@ -120,7 +120,7 @@ pub fn handle_auto_eat(
             sequence: 0,
         });
 
-        packet_events.send(SendPacketEvent {
+        packet_events.write(SendPacketEvent {
             sent_by: entity,
             packet,
         });

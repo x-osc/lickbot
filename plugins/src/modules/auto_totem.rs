@@ -64,7 +64,7 @@ pub fn handle_auto_totem(
         }
 
         if let Some(index) = totem_index {
-            container_click_event.send(ContainerClickEvent {
+            container_click_event.write(ContainerClickEvent {
                 entity,
                 window_id: inventory.id,
                 operation: ClickOperation::Swap(SwapClick {

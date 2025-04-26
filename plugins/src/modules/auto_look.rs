@@ -40,6 +40,6 @@ pub fn handle_auto_look(
             position.y += f64::from(eye_height);
         }
 
-        look_at_events.send(LookAtEvent { entity, position });
+        look_at_events.write(LookAtEvent { entity, position });
     }
 }

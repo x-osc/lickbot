@@ -110,7 +110,7 @@ pub fn handle_auto_kill(
         }
 
         auto_kill.is_attacking = true;
-        look_at_events.send(LookAtEvent { entity, position });
+        look_at_events.write(LookAtEvent { entity, position });
 
         // if target is within 0.7 blocks, try to knock it away, even if charge is not refilled
         if !(auto_kill.knock_back_when_close
@@ -136,13 +136,13 @@ pub fn handle_auto_kill(
         let best_slot = best_weapon_in_hotbar(&inventory.inventory_menu) as u8;
         if inventory.selected_hotbar_slot != best_slot {
             debug!("setting selected weapon to slot {}", best_slot);
-            set_selected_hotbar_slot_events.send(SetSelectedHotbarSlotEvent {
+            set_selected_hotbar_slot_events.write(SetSelectedHotbarSlotEvent {
                 entity,
                 slot: best_slot,
             });
         }
 
-        attack_events.send(AttackEvent {
+        attack_events.write(AttackEvent {
             entity,
             target: *target_id,
         });

@@ -1,10 +1,12 @@
 [package]
 name = "lickbot-plugins"
-version = "0.1.0"
-edition = "2024"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [dependencies]
-anyhow = "1.0.97"
 azalea = { git = "https://github.com/x-osc/azalea", version = "*", branch = "dev" }
-bevy_ecs = { version = "0.15.3", default-features = false }
-tracing = "0.1.41"
+anyhow.workspace = true
+bevy_ecs.workspace = true
+tracing.workspace = true
