@@ -8,7 +8,7 @@ use azalea::pathfinder::astar::PathfinderTimeout;
 use azalea::pathfinder::goals::{BlockPosGoal, Goal, ReachBlockPosGoal, XZGoal, YGoal};
 use azalea::pathfinder::moves::default_move;
 use azalea::pathfinder::{self, GotoEvent};
-use azalea::registry::EntityKind;
+use azalea::registry::{Block, EntityKind};
 use azalea::swarm::prelude::*;
 use azalea::{BlockPos, prelude::*};
 use azalea::{chat::ChatPacket, entity::Position};
@@ -217,6 +217,39 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
             });
         }
         "!mine" => match parts.len() {
+            2 => {
+                let block_name = parts[1];
+                let block =
+                    Block::from_str(&format!("minecraft:{}", block_name)).map_err(|_| {
+                        info!("Invalid block name: {}", block_name);
+                        anyhow!("Invalid block name: {}", block_name)
+                    })?;
+                let block_pos = bot
+                    .world()
+                    .read()
+                    .find_block(bot.position(), &block.into())
+                    .ok_or_else(|| {
+                        info!("Could not find block nearby: {}", block_name);
+                        anyhow!("Could not find block nearby: {}", block_name)
+                    })?;
+                info!("Mining block {} at position {:?}", block, block_pos);
+
+                let chunk_storage = bot.world().read().chunks.clone();
+                bot.ecs.lock().send_event(GotoEvent {
+                    entity: bot.entity,
+                    goal: Arc::new(ReachBlockPosGoal {
+                        pos: block_pos,
+                        chunk_storage,
+                    }),
+                    successors_fn: default_move,
+                    allow_mining: true,
+                    min_timeout: PathfinderTimeout::Time(Duration::from_secs(2)),
+                    max_timeout: PathfinderTimeout::Time(Duration::from_secs(10)),
+                });
+                bot.wait_until_goto_target_reached().await;
+                bot.chat("mining");
+                bot.mine_with_best_tool(block_pos).await;
+            }
             4 => {
                 let x: i32 = parts[1].parse()?;
                 let y: i32 = parts[2].parse()?;
@@ -234,7 +267,6 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
                     max_timeout: PathfinderTimeout::Time(Duration::from_secs(10)),
                 });
                 bot.wait_until_goto_target_reached().await;
-
                 bot.mine_with_best_tool(pos).await;
             }
             _ => {
