@@ -49,7 +49,15 @@ impl MiningExtrasClientExt for Client {
 }
 
 pub fn can_mine_block(pos: BlockPos, eye_pos: Vec3, chunks: &ChunkStorage) -> bool {
+    let max_pick_range = 6;
+    let actual_pick_range = 3.5;
+
+    let distance = pos.distance_squared_to(&eye_pos.to_block_pos_ceil());
+    if distance > max_pick_range * max_pick_range {
+        return false;
+    }
+
     let look_direction = direction_looking_at(&eye_pos, &pos.center());
-    let block_hit_result = pick(&look_direction, &eye_pos, chunks, 3.5);
+    let block_hit_result = pick(&look_direction, &eye_pos, chunks, actual_pick_range);
     block_hit_result.block_pos == pos
 }
