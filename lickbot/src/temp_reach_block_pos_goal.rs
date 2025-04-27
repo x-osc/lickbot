@@ -4,6 +4,7 @@ use azalea::interact::pick;
 use azalea::pathfinder::goals::{BlockPosGoal, Goal};
 use azalea::world::ChunkStorage;
 use azalea::{BlockPos, Vec3, direction_looking_at};
+use tracing::info;
 
 /// Move to a position where we can reach the given block.
 #[derive(Clone)]
@@ -33,6 +34,8 @@ impl Goal for ReachBlockPosGoal {
             &self.chunk_storage,
             actual_pick_range,
         );
+
+        info!("block_hit_result: {:?}", block_hit_result);
 
         block_hit_result.block_pos == self.pos
     }
