@@ -14,15 +14,43 @@ pub fn best_weapon_in_hotbar(menu: &Menu) -> usize {
     weapon_slots
         .iter()
         .max_by(|(_, item1), (_, item2)| {
-            let dps1 = get_dps(item1, true);
-            let dps2 = get_dps(item2, true);
+            let dps1 = get_dps_fancy(item1);
+            let dps2 = get_dps_fancy(item2);
             dps1.partial_cmp(&dps2).unwrap_or(std::cmp::Ordering::Equal)
         })
         .expect("should have iterator of length 9 (hotbar)")
         .0
 }
 
-fn get_dps(item: &ItemStack, do_fancy_calculation: bool) -> f64 {
+pub fn get_dps_capped(item: &ItemStack) -> f64 {
+    let (damage, attack_speed) = get_damage_and_attack_speed_durability(item);
+
+    // attack speed is limited to 2 per second because of damage immunity
+    let capped_attack_speed = f64::min(attack_speed, 2.);
+    damage * capped_attack_speed
+}
+
+pub fn get_dps(item: &ItemStack) -> f64 {
+    let (damage, attack_speed) = get_damage_and_attack_speed_durability(item);
+
+    damage * attack_speed
+}
+
+pub fn get_dps_fancy(item: &ItemStack) -> f64 {
+    let (damage, attack_speed) = get_damage_and_attack_speed_durability(item);
+
+    // attack speed is limited to 2 per second because of damage immunity
+    let capped_attack_speed = f64::min(attack_speed, 2.);
+    // take average of attack speed and capped attack speed
+    let dps = damage * (attack_speed + capped_attack_speed) / 2.0;
+    // multiply dps by 1.(attack_speed) to make faster attack speed more valuable
+    let new_dps = dps * (1. + capped_attack_speed / 10.0);
+
+    #[allow(clippy::let_and_return)]
+    new_dps
+}
+
+pub fn get_damage_and_attack_speed_durability(item: &ItemStack) -> (f64, f64) {
     // dps of fist
     let mut damage = 1.;
     let mut attack_speed = 4.;
@@ -41,19 +69,7 @@ fn get_dps(item: &ItemStack, do_fancy_calculation: bool) -> f64 {
         }
     }
 
-    // attack speed is limited to 2 per second because of damage immunity
-    let capped_attack_speed = f64::min(attack_speed, 2.);
-    if do_fancy_calculation {
-        // take average of attack speed and capped attack speed
-        let dps = damage * (attack_speed + capped_attack_speed) / 2.0;
-        // multiply dps by 1.(attack_speed) to make faster attack speed more valuable
-        let new_dps = dps * (1. + capped_attack_speed / 10.0);
-
-        #[allow(clippy::let_and_return)]
-        new_dps
-    } else {
-        damage * capped_attack_speed
-    }
+    (damage, attack_speed)
 }
 
 /// damage and attack speed of each weapon in the game
