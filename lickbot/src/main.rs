@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use anyhow::{Result, anyhow};
 use azalea::pathfinder::astar::PathfinderTimeout;
-use azalea::pathfinder::goals::{BlockPosGoal, Goal, XZGoal, YGoal};
+use azalea::pathfinder::goals::{BlockPosGoal, Goal, OrGoals, XZGoal, YGoal};
 use azalea::pathfinder::moves::default_move;
 use azalea::pathfinder::{self, GotoEvent};
 use azalea::registry::{Block, EntityKind};
@@ -228,23 +228,32 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
                         info!("Invalid block name: {}", block_name);
                         anyhow!("Invalid block name: {}", block_name)
                     })?;
-                let block_pos = bot
+                let blocks_pos: Vec<BlockPos> = bot
                     .world()
                     .read()
-                    .find_block(bot.position(), &block.into())
-                    .ok_or_else(|| {
-                        info!("Could not find block nearby: {}", block_name);
-                        anyhow!("Could not find block nearby: {}", block_name)
-                    })?;
-                info!("Mining block {} at position {:?}", block, block_pos);
+                    .find_blocks(bot.position(), &block.into())
+                    .take(5)
+                    .collect();
+                if blocks_pos.is_empty() {
+                    info!("Could not find block nearby: {}", block_name);
+                    return Err(anyhow!("Could not find block nearby: {}", block_name));
+                }
+                info!("Mining block {} at positions {:?}", block, blocks_pos);
 
-                let chunk_storage = bot.world().read().chunks.clone();
+                let goal = OrGoals(
+                    blocks_pos
+                        .iter()
+                        .map(|pos| ReachBlockPosGoal {
+                            pos: *pos,
+                            // TODO: replace with reference
+                            chunk_storage: bot.world().read().chunks.clone(),
+                        })
+                        .collect(),
+                );
+
                 bot.ecs.lock().send_event(GotoEvent {
                     entity: bot.entity,
-                    goal: Arc::new(ReachBlockPosGoal {
-                        pos: block_pos,
-                        chunk_storage,
-                    }),
+                    goal: Arc::new(goal),
                     successors_fn: default_move,
                     allow_mining: true,
                     min_timeout: PathfinderTimeout::Time(Duration::from_secs(2)),
@@ -252,7 +261,14 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
                 });
                 bot.wait_until_goto_target_reached().await;
                 info!("mining!");
-                bot.mine_with_best_tool(block_pos).await;
+                // TODO: if is air, return diff info than could not mine
+                for block_pos in blocks_pos {
+                    if bot.mine_with_best_tool(block_pos).await {
+                        return Ok(());
+                    };
+                }
+
+                info!("could not mine any blocks");
             }
             4 => {
                 let x: i32 = parts[1].parse()?;
