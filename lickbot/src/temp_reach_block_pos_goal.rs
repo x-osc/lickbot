@@ -26,6 +26,10 @@ impl Goal for ReachBlockPosGoal {
             return false;
         }
 
+        if n == self.pos {
+            return true;
+        }
+
         let eye_position = n.to_vec3_floored() + Vec3::new(0.5, 1.62, 0.5);
         let look_direction = direction_looking_at(&eye_position, &self.pos.center());
         let block_hit_result = pick(
