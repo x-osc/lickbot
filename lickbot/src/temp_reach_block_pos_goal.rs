@@ -25,7 +25,7 @@ impl Goal for ReachBlockPosGoal {
             return false;
         }
 
-        if n == self.pos {
+        if n == self.pos || n == self.pos.down(1) {
             return true;
         }
 
