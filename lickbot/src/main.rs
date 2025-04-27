@@ -232,7 +232,7 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
                     .world()
                     .read()
                     .find_blocks(bot.position(), &block.into())
-                    .take(5)
+                    .take(10)
                     .collect();
                 if blocks_pos.is_empty() {
                     info!("Could not find block nearby: {}", block_name);
