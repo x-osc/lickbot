@@ -17,9 +17,9 @@ use lickbot_plugins::plugins::auto_look::{self, AutoLookPlugin};
 use lickbot_plugins::plugins::auto_totem::{self, AutoTotemPlugin};
 use lickbot_plugins::plugins::kill_aura::{AutoKillClientExt, AutoKillPlugin};
 use lickbot_plugins::utils::entity_target::{EntityTarget, EntityTargets};
-use lickbot_plugins::utils::mining::MiningExtrasClientExt;
+use lickbot_plugins::utils::mining::{MiningExtrasClientExt, can_mine_block};
 use lickbot_plugins::utils::reach_block_pos_goal::ReachBlockPosGoal;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 const USERNAMES: [&str; 1] = ["lickbot"];
 const ADDRESS: &str = "localhost:25555";
@@ -261,14 +261,13 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
                 });
                 bot.wait_until_goto_target_reached().await;
                 info!("mining!");
-                // TODO: if is air, return diff info than could not mine
                 for block_pos in blocks_pos {
-                    if bot.mine_with_best_tool(block_pos).await {
-                        return Ok(());
-                    };
+                    if can_mine_block(block_pos, bot.eye_position(), &bot.world().read().chunks) {
+                        bot.mine_with_best_tool(block_pos).await;
+                    }
                 }
 
-                info!("could not mine any blocks");
+                warn!("could not mine any blocks");
             }
             4 => {
                 let x: i32 = parts[1].parse()?;
