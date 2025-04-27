@@ -15,3 +15,12 @@ anyhow = "1.0.97"
 parking_lot = "0.12.3"
 tokio = "1.44.2"
 tracing = "0.1.41"
+
+[profile.dev]
+opt-level = 1
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.release]
+codegen-units = 1
+lto = "thin"
