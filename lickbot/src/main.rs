@@ -18,10 +18,8 @@ use lickbot_plugins::plugins::auto_totem::{self, AutoTotemPlugin};
 use lickbot_plugins::plugins::kill_aura::{AutoKillClientExt, AutoKillPlugin};
 use lickbot_plugins::utils::entity_target::{EntityTarget, EntityTargets};
 use lickbot_plugins::utils::mining::MiningExtrasClientExt;
-use temp_reach_block_pos_goal::ReachBlockPosGoal;
+use lickbot_plugins::utils::reach_block_pos_goal::ReachBlockPosGoal;
 use tracing::{error, info};
-
-mod temp_reach_block_pos_goal;
 
 const USERNAMES: [&str; 1] = ["lickbot"];
 const ADDRESS: &str = "localhost:25555";
