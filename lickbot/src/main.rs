@@ -217,6 +217,9 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
                 max_timeout: PathfinderTimeout::Time(Duration::from_secs(10)),
             });
         }
+        "!stop" => {
+            bot.stop_pathfinding();
+        }
         "!mine" => match parts.len() {
             2 => {
                 let block_name = parts[1];
