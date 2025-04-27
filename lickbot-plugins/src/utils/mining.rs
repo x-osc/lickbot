@@ -48,6 +48,6 @@ impl MiningExtrasClientExt for Client {
 
 pub fn can_mine_block(pos: BlockPos, eye_pos: Vec3, chunks: &ChunkStorage) -> bool {
     let look_direction = direction_looking_at(&eye_pos, &pos.center());
-    let block_hit_result = pick(&look_direction, &eye_pos, chunks, 3.2);
+    let block_hit_result = pick(&look_direction, &eye_pos, chunks, 3.5);
     block_hit_result.block_pos == pos
 }
