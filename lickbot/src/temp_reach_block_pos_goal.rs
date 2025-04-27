@@ -4,7 +4,6 @@ use azalea::interact::pick;
 use azalea::pathfinder::goals::{BlockPosGoal, Goal};
 use azalea::world::ChunkStorage;
 use azalea::{BlockPos, Vec3, direction_looking_at};
-use tracing::info;
 
 /// Move to a position where we can reach the given block.
 #[derive(Clone)]
@@ -19,7 +18,7 @@ impl Goal for ReachBlockPosGoal {
     fn success(&self, n: BlockPos) -> bool {
         // only do the expensive check if we're close enough
         let max_pick_range = 6;
-        let actual_pick_range = 4.5;
+        let actual_pick_range = 3.2;
 
         let distance = (self.pos - n).length_squared();
         if distance > max_pick_range * max_pick_range {
@@ -38,8 +37,6 @@ impl Goal for ReachBlockPosGoal {
             &self.chunk_storage,
             actual_pick_range,
         );
-
-        info!("block_hit_result: {:?}", block_hit_result);
 
         block_hit_result.block_pos == self.pos
     }
