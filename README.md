@@ -4,5 +4,6 @@ mine craft bot
 ```sh
 rustup toolchain install nightly
 git clone https://github.com/x-osc/lickbot.git
+cd lickbot
 cargo run
 ```
