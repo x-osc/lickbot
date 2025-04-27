@@ -18,7 +18,7 @@ impl Goal for ReachBlockPosGoal {
     fn success(&self, n: BlockPos) -> bool {
         // only do the expensive check if we're close enough
         let max_pick_range = 6;
-        let actual_pick_range = 3.2;
+        let actual_pick_range = 3.;
 
         let distance = (self.pos - n).length_squared();
         if distance > max_pick_range * max_pick_range {
