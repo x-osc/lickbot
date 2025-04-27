@@ -17,8 +17,8 @@ use lickbot_plugins::plugins::auto_look::{self, AutoLookPlugin};
 use lickbot_plugins::plugins::auto_totem::{self, AutoTotemPlugin};
 use lickbot_plugins::plugins::kill_aura::{AutoKillClientExt, AutoKillPlugin};
 use lickbot_plugins::utils::entity_target::{EntityTarget, EntityTargets};
+use lickbot_plugins::utils::goals::ReachBlockPosGoal;
 use lickbot_plugins::utils::mining::{MiningExtrasClientExt, can_mine_block};
-use lickbot_plugins::utils::reach_block_pos_goal::ReachBlockPosGoal;
 use tracing::{error, info, warn};
 
 const USERNAMES: [&str; 1] = ["lickbot"];
