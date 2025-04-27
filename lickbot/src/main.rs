@@ -17,7 +17,7 @@ use lickbot_plugins::plugins::auto_look::{self, AutoLookPlugin};
 use lickbot_plugins::plugins::auto_totem::{self, AutoTotemPlugin};
 use lickbot_plugins::plugins::kill_aura::{AutoKillClientExt, AutoKillPlugin};
 use lickbot_plugins::utils::entity_target::{EntityTarget, EntityTargets};
-use lickbot_plugins::utils::goals::ReachBlockPosGoal;
+use lickbot_plugins::utils::goals::{ReachBlockPosGoal, StandInBlockGoal, StandNextToBlockGoal};
 use lickbot_plugins::utils::mining::{MiningExtrasClientExt, can_mine_block};
 use tracing::{error, info, warn};
 
@@ -250,7 +250,6 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
                         })
                         .collect(),
                 );
-
                 bot.ecs.lock().send_event(GotoEvent {
                     entity: bot.entity,
                     goal: Arc::new(goal),
@@ -260,14 +259,58 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
                     max_timeout: PathfinderTimeout::Time(Duration::from_secs(10)),
                 });
                 bot.wait_until_goto_target_reached().await;
+
                 info!("mining!");
-                for block_pos in blocks_pos {
-                    if can_mine_block(block_pos, bot.eye_position(), &bot.world().read().chunks) {
-                        bot.mine_with_best_tool(block_pos).await;
-                    }
+                if try_mine_blocks(&bot, &blocks_pos).await.is_ok() {
+                    return Ok(());
                 }
 
-                warn!("could not mine any blocks");
+                warn!("could not mine any blocks, trying to get closer");
+
+                let goal = OrGoals(
+                    blocks_pos
+                        .iter()
+                        .map(|pos| StandNextToBlockGoal { pos: *pos })
+                        .collect(),
+                );
+                bot.ecs.lock().send_event(GotoEvent {
+                    entity: bot.entity,
+                    goal: Arc::new(goal),
+                    successors_fn: default_move,
+                    allow_mining: true,
+                    min_timeout: PathfinderTimeout::Time(Duration::from_secs(2)),
+                    max_timeout: PathfinderTimeout::Time(Duration::from_secs(10)),
+                });
+                bot.wait_until_goto_target_reached().await;
+
+                info!("mining!");
+                if try_mine_blocks(&bot, &blocks_pos).await.is_ok() {
+                    return Ok(());
+                }
+
+                warn!("could not mine any blocks, trying to stand in block");
+
+                let goal = OrGoals(
+                    blocks_pos
+                        .iter()
+                        .map(|pos| StandInBlockGoal { pos: *pos })
+                        .collect(),
+                );
+                bot.ecs.lock().send_event(GotoEvent {
+                    entity: bot.entity,
+                    goal: Arc::new(goal),
+                    successors_fn: default_move,
+                    allow_mining: true,
+                    min_timeout: PathfinderTimeout::Time(Duration::from_secs(2)),
+                    max_timeout: PathfinderTimeout::Time(Duration::from_secs(10)),
+                });
+                bot.wait_until_goto_target_reached().await;
+
+                if try_mine_blocks(&bot, &blocks_pos).await.is_ok() {
+                    return Ok(());
+                }
+
+                warn!("could not mine any blocks, returning");
             }
             4 => {
                 let x: i32 = parts[1].parse()?;
@@ -286,7 +329,7 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
                     max_timeout: PathfinderTimeout::Time(Duration::from_secs(10)),
                 });
                 bot.wait_until_goto_target_reached().await;
-                bot.mine_with_best_tool(pos).await;
+                bot.mine_with_best_tool(&pos).await;
             }
             _ => {
                 info!("Invalid number of arguments for !mine command");
@@ -340,4 +383,34 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
     };
 
     Ok(())
+}
+
+async fn try_mine_blocks(bot: &Client, blocks_pos: &Vec<BlockPos>) -> Result<()> {
+    for block_pos in blocks_pos {
+        let block_state = bot
+            .world()
+            .read()
+            .get_block_state(block_pos)
+            .unwrap_or_default();
+        if block_state.is_air() {
+            if block_pos.distance_squared_to(&bot.position().to_block_pos_ceil()) < 4 * 4 {
+                // block was probably mined by the bot
+                warn!("block {} is mined, returning", block_pos);
+                return Ok(());
+            }
+
+            // block was probably mined by someone else
+            warn!("block {} is already mined", block_pos);
+            continue;
+        }
+
+        if can_mine_block(block_pos, bot.eye_position(), &bot.world().read().chunks) {
+            bot.mine_with_best_tool(block_pos).await;
+            return Ok(());
+        }
+    }
+
+    Err(anyhow!(
+        "could not mine any blocks, all blocks are either air or unreachable"
+    ))
 }

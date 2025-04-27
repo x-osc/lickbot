@@ -58,3 +58,40 @@ impl Debug for ReachBlockPosGoal {
         Debug::fmt(&ReachBlockPosGoal { pos }, f)
     }
 }
+
+#[derive(Clone, Debug)]
+pub struct StandNextToBlockGoal {
+    pub pos: BlockPos,
+}
+impl Goal for StandNextToBlockGoal {
+    fn heuristic(&self, n: BlockPos) -> f32 {
+        BlockPosGoal(self.pos).heuristic(n)
+    }
+    fn success(&self, n: BlockPos) -> bool {
+        // if standing in the block
+        n == self.pos || n == self.pos.down(1)
+        // or on the block
+        || n == self.pos.up(1)
+        // or head is directly below the block
+        || n == self.pos.down(2)
+        // or head is right next to the block
+        || n == self.pos.down(1).north(1)
+        || n == self.pos.down(1).south(1)
+        || n == self.pos.down(1).east(1)
+        || n == self.pos.down(1).west(1)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct StandInBlockGoal {
+    pub pos: BlockPos,
+}
+impl Goal for StandInBlockGoal {
+    fn heuristic(&self, n: BlockPos) -> f32 {
+        BlockPosGoal(self.pos).heuristic(n)
+    }
+    fn success(&self, n: BlockPos) -> bool {
+        // if standing in the block
+        n == self.pos || n == self.pos.down(1)
+    }
+}

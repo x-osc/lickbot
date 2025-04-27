@@ -6,17 +6,13 @@ use azalea::{BlockPos, BotClientExt, Client, Vec3, direction_looking_at};
 use tracing::warn;
 
 pub trait MiningExtrasClientExt {
-    fn mine_with_best_tool(&self, pos: BlockPos) -> impl Future<Output = bool> + Send;
-    fn look_and_mine(&self, pos: BlockPos) -> impl Future<Output = bool> + Send;
+    fn mine_with_best_tool(&self, pos: &BlockPos) -> impl Future<Output = bool> + Send;
+    fn look_and_mine(&self, pos: &BlockPos) -> impl Future<Output = bool> + Send;
 }
 
 impl MiningExtrasClientExt for Client {
-    async fn mine_with_best_tool(&self, pos: BlockPos) -> bool {
-        let block_state = self
-            .world()
-            .read()
-            .get_block_state(&pos)
-            .unwrap_or_default();
+    async fn mine_with_best_tool(&self, pos: &BlockPos) -> bool {
+        let block_state = self.world().read().get_block_state(pos).unwrap_or_default();
         if block_state.is_air() {
             warn!("Block is air, not mining");
             return false;
@@ -35,20 +31,20 @@ impl MiningExtrasClientExt for Client {
         return self.look_and_mine(pos).await;
     }
 
-    async fn look_and_mine(&self, pos: BlockPos) -> bool {
+    async fn look_and_mine(&self, pos: &BlockPos) -> bool {
         if !can_mine_block(pos, self.eye_position(), &self.world().read().chunks) {
             warn!("Block is not reachable, not mining");
             return false;
         }
 
         self.look_at(pos.center());
-        self.mine(pos).await;
+        self.mine(*pos).await;
 
         true
     }
 }
 
-pub fn can_mine_block(pos: BlockPos, eye_pos: Vec3, chunks: &ChunkStorage) -> bool {
+pub fn can_mine_block(pos: &BlockPos, eye_pos: Vec3, chunks: &ChunkStorage) -> bool {
     let max_pick_range = 6;
     let actual_pick_range = 3.5;
 
@@ -59,5 +55,5 @@ pub fn can_mine_block(pos: BlockPos, eye_pos: Vec3, chunks: &ChunkStorage) -> bo
 
     let look_direction = direction_looking_at(&eye_pos, &pos.center());
     let block_hit_result = pick(&look_direction, &eye_pos, chunks, actual_pick_range);
-    block_hit_result.block_pos == pos
+    block_hit_result.block_pos == *pos
 }
