@@ -253,7 +253,7 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
                     max_timeout: PathfinderTimeout::Time(Duration::from_secs(10)),
                 });
                 bot.wait_until_goto_target_reached().await;
-                bot.chat("mining");
+                info!("mining!");
                 bot.mine_with_best_tool(block_pos).await;
             }
             4 => {
