@@ -5,7 +5,7 @@ members = ["lickbot", "lickbot-plugins"]
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
-license = "GPL-3.0-only"
+license = "MIT"
 repository = "github.com/x-osc/lickbot"
 
 [workspace.dependencies]
