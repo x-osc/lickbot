@@ -17,7 +17,6 @@ use lickbot_plugins::plugins::auto_look::{self, AutoLookPlugin};
 use lickbot_plugins::plugins::auto_totem::{self, AutoTotemPlugin};
 use lickbot_plugins::plugins::kill_aura::{AutoKillClientExt, AutoKillPlugin};
 use lickbot_plugins::utils::entity_target::{EntityTarget, EntityTargets};
-use lickbot_plugins::utils::goals::ReachBlockPosGoal;
 use lickbot_plugins::utils::mining::MiningExtrasClientExt;
 use tracing::{error, info};
 
@@ -249,17 +248,7 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
                 let pos = BlockPos::new(x, y, z);
                 info!("Mining at position: {:?}", pos);
 
-                let chunk_storage = bot.world().read().chunks.clone();
-                bot.ecs.lock().send_event(GotoEvent {
-                    entity: bot.entity,
-                    goal: Arc::new(ReachBlockPosGoal { pos, chunk_storage }),
-                    successors_fn: default_move,
-                    allow_mining: true,
-                    min_timeout: PathfinderTimeout::Time(Duration::from_secs(2)),
-                    max_timeout: PathfinderTimeout::Time(Duration::from_secs(10)),
-                });
-                bot.wait_until_goto_target_reached().await;
-                bot.mine_with_best_tool(&pos).await?;
+                bot.try_mine_block(&pos).await?;
             }
             _ => {
                 info!("Invalid number of arguments for !mine command");

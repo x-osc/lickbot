@@ -25,6 +25,10 @@ pub trait MiningExtrasClientExt {
     ) -> impl Future<Output = Result<(), MiningError>> + Send;
     fn look_and_mine(&self, pos: &BlockPos)
     -> impl Future<Output = Result<(), MiningError>> + Send;
+    fn try_mine_block(
+        &self,
+        pos: &BlockPos,
+    ) -> impl Future<Output = Result<(), CantMineAnyError>> + Send;
     fn try_mine_blocks(
         &self,
         blocks_pos: &[BlockPos],
@@ -65,6 +69,10 @@ impl MiningExtrasClientExt for Client {
         self.mine(*pos).await;
 
         Ok(())
+    }
+
+    async fn try_mine_block(&self, pos: &BlockPos) -> Result<(), CantMineAnyError> {
+        self.try_mine_blocks(&[*pos]).await
     }
 
     async fn try_mine_blocks(&self, blocks_pos: &[BlockPos]) -> Result<(), CantMineAnyError> {
