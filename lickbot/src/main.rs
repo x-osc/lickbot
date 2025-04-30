@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use anyhow::{Result, anyhow};
 use azalea::pathfinder::astar::PathfinderTimeout;
-use azalea::pathfinder::goals::{BlockPosGoal, Goal, OrGoals, XZGoal, YGoal};
+use azalea::pathfinder::goals::{BlockPosGoal, Goal, XZGoal, YGoal};
 use azalea::pathfinder::moves::default_move;
 use azalea::pathfinder::{self, GotoEvent};
 use azalea::registry::{Block, EntityKind};
@@ -17,9 +17,9 @@ use lickbot_plugins::plugins::auto_look::{self, AutoLookPlugin};
 use lickbot_plugins::plugins::auto_totem::{self, AutoTotemPlugin};
 use lickbot_plugins::plugins::kill_aura::{AutoKillClientExt, AutoKillPlugin};
 use lickbot_plugins::utils::entity_target::{EntityTarget, EntityTargets};
-use lickbot_plugins::utils::goals::{ReachBlockPosGoal, StandInBlockGoal, StandNextToBlockGoal};
-use lickbot_plugins::utils::mining::{MiningExtrasClientExt, can_mine_block};
-use tracing::{error, info, warn};
+use lickbot_plugins::utils::goals::ReachBlockPosGoal;
+use lickbot_plugins::utils::mining::MiningExtrasClientExt;
+use tracing::{error, info};
 
 const USERNAMES: [&str; 1] = ["lickbot"];
 const ADDRESS: &str = "localhost:25555";
