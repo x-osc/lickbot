@@ -25,11 +25,11 @@ pub trait MiningExtrasClientExt {
     ) -> impl Future<Output = Result<(), MiningError>> + Send;
     fn look_and_mine(&self, pos: &BlockPos)
     -> impl Future<Output = Result<(), MiningError>> + Send;
-    fn try_mine_block(
+    fn goto_and_try_mine_block(
         &self,
         pos: &BlockPos,
     ) -> impl Future<Output = Result<(), CantMineAnyError>> + Send;
-    fn try_mine_blocks(
+    fn goto_and_try_mine_blocks(
         &self,
         blocks_pos: &[BlockPos],
     ) -> impl std::future::Future<Output = Result<(), CantMineAnyError>> + Send;
@@ -71,11 +71,11 @@ impl MiningExtrasClientExt for Client {
         Ok(())
     }
 
-    async fn try_mine_block(&self, pos: &BlockPos) -> Result<(), CantMineAnyError> {
-        self.try_mine_blocks(&[*pos]).await
+    async fn goto_and_try_mine_block(&self, pos: &BlockPos) -> Result<(), CantMineAnyError> {
+        self.goto_and_try_mine_blocks(&[*pos]).await
     }
 
-    async fn try_mine_blocks(&self, blocks_pos: &[BlockPos]) -> Result<(), CantMineAnyError> {
+    async fn goto_and_try_mine_blocks(&self, blocks_pos: &[BlockPos]) -> Result<(), CantMineAnyError> {
         let goal = OrGoals(
             blocks_pos
                 .iter()

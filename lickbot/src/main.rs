@@ -239,7 +239,7 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
                 }
                 info!("Mining block {} at positions {:?}", block, blocks_pos);
 
-                bot.try_mine_blocks(&blocks_pos).await?;
+                bot.goto_and_try_mine_blocks(&blocks_pos).await?;
             }
             4 => {
                 let x: i32 = parts[1].parse()?;
@@ -248,7 +248,7 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
                 let pos = BlockPos::new(x, y, z);
                 info!("Mining at position: {:?}", pos);
 
-                bot.try_mine_block(&pos).await?;
+                bot.goto_and_try_mine_block(&pos).await?;
             }
             _ => {
                 info!("Invalid number of arguments for !mine command");
