@@ -206,7 +206,6 @@ async fn try_mine_blocks(bot: &Client, blocks_pos: &[BlockPos]) -> Result<(), Ca
 
         match bot.mine_with_best_tool(block_pos).await {
             Ok(_) => {
-                debug!("mined block {}", block_pos);
                 return Ok(());
             }
             Err(_) => {
