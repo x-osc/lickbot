@@ -4,6 +4,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use azalea::auto_tool::best_tool_in_hotbar_for_block;
+use azalea::blocks::Block;
 use azalea::interact::pick;
 use azalea::inventory::SetSelectedHotbarSlotEvent;
 use azalea::pathfinder::astar::PathfinderTimeout;
@@ -12,13 +13,18 @@ use azalea::pathfinder::{GotoEvent, moves};
 use azalea::prelude::PathfinderClientExt;
 use azalea::world::ChunkStorage;
 use azalea::{BlockPos, BotClientExt, Client, Vec3, direction_looking_at};
+use thiserror::Error;
 use tracing::{debug, warn};
 
 use crate::utils::goals::{ReachBlockPosGoal, StandInBlockGoal, StandNextToBlockGoal};
 
 pub trait MiningExtrasClientExt {
-    fn mine_with_best_tool(&self, pos: &BlockPos) -> impl Future<Output = bool> + Send;
-    fn look_and_mine(&self, pos: &BlockPos) -> impl Future<Output = bool> + Send;
+    fn mine_with_best_tool(
+        &self,
+        pos: &BlockPos,
+    ) -> impl Future<Output = Result<(), MiningError>> + Send;
+    fn look_and_mine(&self, pos: &BlockPos)
+    -> impl Future<Output = Result<(), MiningError>> + Send;
     fn try_mine_blocks(
         &self,
         blocks_pos: &[BlockPos],
@@ -26,16 +32,16 @@ pub trait MiningExtrasClientExt {
 }
 
 impl MiningExtrasClientExt for Client {
-    async fn mine_with_best_tool(&self, pos: &BlockPos) -> bool {
-        let block_state = self.world().read().get_block_state(pos).unwrap_or_default();
-        if block_state.is_air() {
-            warn!("Block is air, not mining");
-            return false;
+    async fn mine_with_best_tool(&self, pos: &BlockPos) -> Result<(), MiningError> {
+        match can_mine_block(pos, self.eye_position(), &self.world().read().chunks) {
+            Ok(_) => (),
+            Err(e) => return Err(e),
         }
+
+        let block_state = self.world().read().get_block_state(pos).unwrap_or_default();
         let best_tool_result = best_tool_in_hotbar_for_block(block_state, &self.menu());
         if best_tool_result.percentage_per_tick == 0. {
-            warn!("Block is not breakable, not mining");
-            return false;
+            return Err(MiningError::BlockIsNotBreakable);
         }
 
         self.ecs.lock().send_event(SetSelectedHotbarSlotEvent {
@@ -43,19 +49,22 @@ impl MiningExtrasClientExt for Client {
             slot: best_tool_result.index as u8,
         });
 
-        return self.look_and_mine(pos).await;
+        self.look_at(pos.center());
+        self.mine(*pos).await;
+
+        Ok(())
     }
 
-    async fn look_and_mine(&self, pos: &BlockPos) -> bool {
-        if !can_mine_block(pos, self.eye_position(), &self.world().read().chunks) {
-            warn!("Block is not reachable, not mining");
-            return false;
+    async fn look_and_mine(&self, pos: &BlockPos) -> Result<(), MiningError> {
+        match can_mine_block(pos, self.eye_position(), &self.world().read().chunks) {
+            Ok(_) => (),
+            Err(e) => return Err(e),
         }
 
         self.look_at(pos.center());
         self.mine(*pos).await;
 
-        true
+        Ok(())
     }
 
     async fn try_mine_blocks(&self, blocks_pos: &[BlockPos]) -> Result<(), CantMineAnyError> {
@@ -137,18 +146,35 @@ impl MiningExtrasClientExt for Client {
     }
 }
 
-pub fn can_mine_block(pos: &BlockPos, eye_pos: Vec3, chunks: &ChunkStorage) -> bool {
+pub fn can_mine_block(
+    pos: &BlockPos,
+    eye_pos: Vec3,
+    chunks: &ChunkStorage,
+) -> Result<(), MiningError> {
+    let block_state = chunks.get_block_state(pos).unwrap_or_default();
+    if block_state.is_air() {
+        return Err(MiningError::BlockIsAir);
+    }
+    let block: Box<dyn Block> = block_state.into();
+    if (*block).behavior().destroy_time < -1. {
+        return Err(MiningError::BlockIsNotBreakable);
+    }
+
     let max_pick_range = 6;
     let actual_pick_range = 3.5;
 
     let distance = pos.distance_squared_to(&eye_pos.to_block_pos_ceil());
     if distance > max_pick_range * max_pick_range {
-        return false;
+        return Err(MiningError::BlockIsNotReachable);
     }
 
     let look_direction = direction_looking_at(&eye_pos, &pos.center());
     let block_hit_result = pick(&look_direction, &eye_pos, chunks, actual_pick_range);
-    block_hit_result.block_pos == *pos
+    if !(block_hit_result.block_pos == *pos) {
+        return Err(MiningError::BlockIsNotReachable);
+    }
+
+    Ok(())
 }
 
 async fn try_mine_blocks(bot: &Client, blocks_pos: &[BlockPos]) -> Result<(), CantMineAnyError> {
@@ -170,9 +196,14 @@ async fn try_mine_blocks(bot: &Client, blocks_pos: &[BlockPos]) -> Result<(), Ca
             continue;
         }
 
-        if can_mine_block(block_pos, bot.eye_position(), &bot.world().read().chunks) {
-            bot.mine_with_best_tool(block_pos).await;
-            return Ok(());
+        match bot.mine_with_best_tool(block_pos).await {
+            Ok(_) => {
+                debug!("mined block {}", block_pos);
+                return Ok(());
+            }
+            Err(_) => {
+                continue;
+            }
         }
     }
 
@@ -181,6 +212,16 @@ async fn try_mine_blocks(bot: &Client, blocks_pos: &[BlockPos]) -> Result<(), Ca
         // actually now that i changed it its not so horrible but still pretty bad we should change it
         blocks_pos: blocks_pos.to_vec(),
     })
+}
+
+#[derive(Debug, Error)]
+pub enum MiningError {
+    #[error("Block is air")]
+    BlockIsAir,
+    #[error("Block is not breakable")]
+    BlockIsNotBreakable,
+    #[error("Block is not reachable")]
+    BlockIsNotReachable,
 }
 
 #[derive(Debug)]

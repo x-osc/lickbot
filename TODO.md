@@ -2,4 +2,3 @@
  - check sightline for lookat
  - add components for killaura and autoeat
  - make mine block always look at block
- - change mining funcs to return result instead of bool

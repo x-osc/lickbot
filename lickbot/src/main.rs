@@ -259,7 +259,7 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
                     max_timeout: PathfinderTimeout::Time(Duration::from_secs(10)),
                 });
                 bot.wait_until_goto_target_reached().await;
-                bot.mine_with_best_tool(&pos).await;
+                bot.mine_with_best_tool(&pos).await?;
             }
             _ => {
                 info!("Invalid number of arguments for !mine command");
