@@ -1823,9 +1823,9 @@ dependencies = [
 name = "lickbot-plugins"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "azalea",
  "bevy_ecs",
+ "thiserror 2.0.12",
  "tracing",
 ]
 
