@@ -151,7 +151,7 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
         }
         "!health" => {
             let health = bot.health();
-            bot.chat(&format!("health: {}", health));
+            bot.chat(&format!("health: {health}"));
         }
         "!hunger" => {
             let hunger = bot.hunger();
@@ -223,7 +223,7 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
             2 => {
                 let block_name = parts[1];
                 let block =
-                    Block::from_str(&format!("minecraft:{}", block_name)).map_err(|_| {
+                    Block::from_str(&format!("minecraft:{block_name}")).map_err(|_| {
                         info!("Invalid block name: {}", block_name);
                         anyhow!("Invalid block name: {}", block_name)
                     })?;
