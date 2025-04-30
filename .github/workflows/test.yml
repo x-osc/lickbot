@@ -1,0 +1,17 @@
+name: Test
+
+on: [push, pull_request]
+
+env:
+  # Disable incremental compilation for faster from-scratch builds
+  CARGO_INCREMENTAL: 0
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup install nightly
+      - name: Test
+        run: cargo test --all-features --verbose

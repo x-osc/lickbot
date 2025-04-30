@@ -1,0 +1,54 @@
+name: Build
+
+on: [push, pull_request]
+
+env:
+  # Disable incremental compilation for faster from-scratch builds
+  CARGO_INCREMENTAL: 0
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: build for ${{ matrix.platform.os-name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - runs-on: ubuntu-latest
+            os-name: linux
+            target: x86_64-unknown-linux-gnu
+          - runs-on: windows-latest
+            os-name: windows
+            target: x86_64-pc-windows-msvc
+          - runs-on: macos-latest
+            os-name: macos
+            target: aarch64-apple-darwin
+
+    runs-on: ${{ matrix.platform.runs-on }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        run: rustup install nightly
+
+      - name: Add Target
+        run: rustup target add ${{ matrix.platform.target }}
+
+      - name: Build
+        run: cargo build --release --verbose --target ${{ matrix.platform.target }}
+
+      - name: Upload Artifact
+        if: ${{ matrix.platform.os-name == 'windows' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: lickbot-${{ matrix.platform.os-name }}
+          path: ./target/${{ matrix.platform.target }}/release/lickbot.exe
+
+      - name: Upload Artifact
+        if: ${{ matrix.platform.os-name != 'windows' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: lickbot-${{ matrix.platform.os-name }}
+          path: ./target/${{ matrix.platform.target }}/release/lickbot

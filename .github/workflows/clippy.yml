@@ -1,0 +1,29 @@
+name: Clippy
+
+on: [push, pull_request]
+
+jobs:
+  rustfmt:
+    name: rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        run: rustup install nightly
+      - name: Install rustfmt
+        run: rustup component add rustfmt --toolchain nightly
+      - name: Run rustfmt
+        run: cargo fmt --all -- --check --verbose
+        continue-on-error: true
+  clippy:
+    name: clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        run: rustup install nightly
+      - name: Install clippy
+        run: rustup component add clippy --toolchain nightly
+      - name: Run clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings --verbose
+        continue-on-error: true

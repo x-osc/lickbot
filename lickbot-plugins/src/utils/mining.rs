@@ -75,7 +75,10 @@ impl MiningExtrasClientExt for Client {
         self.goto_and_try_mine_blocks(&[*pos]).await
     }
 
-    async fn goto_and_try_mine_blocks(&self, blocks_pos: &[BlockPos]) -> Result<(), CantMineAnyError> {
+    async fn goto_and_try_mine_blocks(
+        &self,
+        blocks_pos: &[BlockPos],
+    ) -> Result<(), CantMineAnyError> {
         let goal = OrGoals(
             blocks_pos
                 .iter()
