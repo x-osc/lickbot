@@ -222,11 +222,10 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
         "!mine" => match parts.len() {
             2 => {
                 let block_name = parts[1];
-                let block =
-                    Block::from_str(&format!("minecraft:{block_name}")).map_err(|_| {
-                        info!("Invalid block name: {}", block_name);
-                        anyhow!("Invalid block name: {}", block_name)
-                    })?;
+                let block = Block::from_str(&format!("minecraft:{block_name}")).map_err(|_| {
+                    info!("Invalid block name: {}", block_name);
+                    anyhow!("Invalid block name: {}", block_name)
+                })?;
                 let blocks_pos: Vec<BlockPos> = bot
                     .world()
                     .read()
@@ -253,6 +252,35 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
             _ => {
                 info!("Invalid number of arguments for !mine command");
                 return Err(anyhow!("Invalid number of arguments for !mine command"));
+            }
+        },
+        "!mineall" => match parts.len() {
+            2 => {
+                let block_name = parts[1];
+                let block = Block::from_str(&format!("minecraft:{block_name}")).map_err(|_| {
+                    info!("Invalid block name: {}", block_name);
+                    anyhow!("Invalid block name: {}", block_name)
+                })?;
+
+                loop {
+                    let blocks_pos: Vec<BlockPos> = bot
+                        .world()
+                        .read()
+                        .find_blocks(bot.position(), &block.into())
+                        .take(10)
+                        .collect();
+                    if blocks_pos.is_empty() {
+                        info!("Could not find block nearby: {}", block_name);
+                        return Err(anyhow!("Could not find block nearby: {}", block_name));
+                    }
+                    info!("Mining block {} at positions {:?}", block, blocks_pos);
+
+                    bot.goto_and_try_mine_blocks(&blocks_pos).await?;
+                }
+            }
+            _ => {
+                info!("Incorrect  arguments for !mineall command");
+                return Err(anyhow!("Incorrect arguments for !mineall command"));
             }
         },
         "!killaura" => match parts.get(1) {
