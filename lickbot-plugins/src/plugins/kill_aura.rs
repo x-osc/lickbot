@@ -16,6 +16,7 @@ use azalea::world::MinecraftEntityId;
 use azalea::{LookAtEvent, Vec3, prelude::*};
 use tracing::{debug, error, trace};
 
+use crate::plugins;
 use crate::utils::entity_target::{EntityTarget, EntityTargets, TargetFinder};
 use crate::utils::weapon::best_weapon_in_hotbar;
 
@@ -27,7 +28,8 @@ impl Plugin for AutoKillPlugin {
         app.add_systems(
             GameTick,
             handle_auto_kill
-                .after(crate::plugins::auto_look::handle_auto_look)
+                .after(plugins::auto_look::handle_auto_look)
+                .before(plugins::look_when_mining::look_while_mining)
                 .before(InventorySet)
                 .before(PhysicsSet),
         );

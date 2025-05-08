@@ -6,12 +6,19 @@ use azalea::nearest_entity::EntityFinder;
 use azalea::physics::PhysicsSet;
 use azalea::{LookAtEvent, Vec3, prelude::*};
 
+use crate::plugins;
+
 /// Automatically look at the nearest player
 pub struct AutoLookPlugin;
 
 impl Plugin for AutoLookPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(GameTick, handle_auto_look.before(PhysicsSet));
+        app.add_systems(
+            GameTick,
+            handle_auto_look
+                .before(PhysicsSet)
+                .before(plugins::look_when_mining::look_while_mining),
+        );
     }
 }
 

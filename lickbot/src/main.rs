@@ -16,6 +16,7 @@ use lickbot_plugins::plugins::auto_eat::AutoEatPlugin;
 use lickbot_plugins::plugins::auto_look::{self, AutoLookPlugin};
 use lickbot_plugins::plugins::auto_totem::{self, AutoTotemPlugin};
 use lickbot_plugins::plugins::kill_aura::{AutoKillClientExt, AutoKillPlugin};
+use lickbot_plugins::plugins::look_when_mining::LookMinePlugin;
 use lickbot_plugins::utils::entity_target::{EntityTarget, EntityTargets};
 use lickbot_plugins::utils::mining::MiningExtrasClientExt;
 use tracing::{error, info};
@@ -39,6 +40,7 @@ async fn main() {
         .add_plugins(AutoTotemPlugin)
         .add_plugins(AutoKillPlugin)
         .add_plugins(AutoEatPlugin)
+        .add_plugins(LookMinePlugin)
         .set_handler(handle)
         .set_swarm_handler(swarm_handle)
         .join_delay(Duration::from_secs(5));
