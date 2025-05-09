@@ -9,7 +9,24 @@ use azalea::{BlockPos, Vec3, direction_looking_at};
 #[derive(Clone)]
 pub struct ReachBlockPosGoal {
     pub pos: BlockPos,
+    pub distance: f64,
     pub chunk_storage: ChunkStorage,
+
+    max_check_distance: i32,
+}
+impl ReachBlockPosGoal {
+    pub fn new(pos: BlockPos, chunk_storage: ChunkStorage) -> Self {
+        Self::new_with_distance(pos, 4.5, chunk_storage)
+    }
+
+    pub fn new_with_distance(pos: BlockPos, distance: f64, chunk_storage: ChunkStorage) -> Self {
+        Self {
+            pos,
+            distance,
+            chunk_storage,
+            max_check_distance: (distance + 2.).ceil() as i32,
+        }
+    }
 }
 impl Goal for ReachBlockPosGoal {
     fn heuristic(&self, n: BlockPos) -> f32 {
@@ -17,11 +34,8 @@ impl Goal for ReachBlockPosGoal {
     }
     fn success(&self, n: BlockPos) -> bool {
         // only do the expensive check if we're close enough
-        let max_pick_range = 6;
-        let actual_pick_range = 3.;
-
         let distance = (self.pos - n).length_squared();
-        if distance > max_pick_range * max_pick_range {
+        if distance > self.max_check_distance * self.max_check_distance {
             return false;
         }
 
@@ -35,7 +49,7 @@ impl Goal for ReachBlockPosGoal {
             &look_direction,
             &eye_position,
             &self.chunk_storage,
-            actual_pick_range,
+            self.distance,
         );
 
         block_hit_result.block_pos == self.pos
@@ -46,16 +60,27 @@ impl Debug for ReachBlockPosGoal {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         #[derive(Debug)]
         #[allow(dead_code)]
-        struct ReachBlockPosGoal<'a> {
-            pos: &'a BlockPos,
+        struct ReachBlockPosGoal {
+            pos: BlockPos,
+            distance: f64,
+            max_check_distance: i32,
         }
 
         let Self {
             pos,
+            distance,
             chunk_storage: _,
+            max_check_distance,
         } = self;
 
-        Debug::fmt(&ReachBlockPosGoal { pos }, f)
+        Debug::fmt(
+            &ReachBlockPosGoal {
+                pos: *pos,
+                distance: *distance,
+                max_check_distance: *max_check_distance,
+            },
+            f,
+        )
     }
 }
 

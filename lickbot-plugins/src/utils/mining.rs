@@ -82,10 +82,12 @@ impl MiningExtrasClientExt for Client {
         let goal = OrGoals(
             blocks_pos
                 .iter()
-                .map(|pos| ReachBlockPosGoal {
-                    pos: *pos,
-                    // TODO: replace with reference
-                    chunk_storage: self.world().read().chunks.clone(),
+                .map(|pos| {
+                    ReachBlockPosGoal::new_with_distance(
+                        *pos,
+                        3.2,
+                        self.world().read().chunks.clone(),
+                    )
                 })
                 .collect(),
         );
