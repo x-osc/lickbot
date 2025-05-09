@@ -5,14 +5,18 @@ use std::time::Duration;
 
 use azalea::auto_tool::best_tool_in_hotbar_for_block;
 use azalea::blocks::Block;
+use azalea::entity::Position;
+use azalea::entity::metadata::ItemItem;
 use azalea::interact::pick;
 use azalea::inventory::SetSelectedHotbarSlotEvent;
 use azalea::pathfinder::astar::PathfinderTimeout;
 use azalea::pathfinder::goals::OrGoals;
 use azalea::pathfinder::{GotoEvent, moves};
 use azalea::prelude::PathfinderClientExt;
-use azalea::world::ChunkStorage;
+use azalea::registry::Item;
+use azalea::world::{ChunkStorage, InstanceName};
 use azalea::{BlockPos, BotClientExt, Client, Vec3, direction_looking_at};
+use bevy_ecs::entity::Entity;
 use thiserror::Error;
 use tracing::{debug, warn};
 
@@ -32,6 +36,7 @@ pub trait MiningExtrasClientExt {
         &self,
         blocks_pos: &[BlockPos],
     ) -> impl std::future::Future<Output = Result<(), CantMineAnyError>> + Send;
+    fn try_pick_up_item(&self, item: Item) -> impl std::future::Future<Output = ()> + Send;
 }
 
 impl MiningExtrasClientExt for Client {
@@ -155,6 +160,52 @@ impl MiningExtrasClientExt for Client {
         Err(CantMineAnyError {
             blocks_pos: blocks_pos.to_vec(),
         })
+    }
+
+    async fn try_pick_up_item(&self, item: Item) {
+        let mut nearest_position: Option<Vec3> = None;
+        let mut nearest_distance = f64::MAX;
+        {
+            let mut item_query = self
+                .ecs
+                .lock()
+                .query::<(Entity, &ItemItem, &Position, &InstanceName)>();
+            let client_instance_name = self.component::<InstanceName>();
+            let client_position = self.eye_position();
+
+            for (_entity, item_component, position, instance_name) in
+                item_query.iter(&self.ecs.lock())
+            {
+                if instance_name != &client_instance_name {
+                    continue;
+                }
+
+                if item_component.kind() != item {
+                    continue;
+                }
+
+                let distance = client_position.distance_squared_to(position);
+                if distance < (20. * 20.) && distance < nearest_distance {
+                    nearest_distance = distance;
+                    nearest_position = Some(position.into());
+                }
+            }
+        }
+
+        if let Some(nearest_position) = nearest_position {
+            self.ecs.lock().send_event(GotoEvent {
+                entity: self.entity,
+                goal: Arc::new(StandInBlockGoal {
+                    pos: nearest_position.to_block_pos_floor(),
+                }),
+                successors_fn: moves::default_move,
+                allow_mining: true,
+                min_timeout: PathfinderTimeout::Time(Duration::from_secs(2)),
+                max_timeout: PathfinderTimeout::Time(Duration::from_secs(10)),
+            });
+        }
+
+        self.wait_until_goto_target_reached().await;
     }
 }
 

@@ -8,7 +8,7 @@ use azalea::pathfinder::astar::PathfinderTimeout;
 use azalea::pathfinder::goals::{BlockPosGoal, Goal, XZGoal, YGoal};
 use azalea::pathfinder::moves::default_move;
 use azalea::pathfinder::{self, GotoEvent};
-use azalea::registry::{Block, EntityKind};
+use azalea::registry::{Block, EntityKind, Item};
 use azalea::swarm::prelude::*;
 use azalea::{BlockPos, prelude::*};
 use azalea::{chat::ChatPacket, entity::Position};
@@ -283,6 +283,21 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
             _ => {
                 info!("Incorrect  arguments for !mineall command");
                 return Err(anyhow!("Incorrect arguments for !mineall command"));
+            }
+        },
+        "!pickup" => match parts.len() {
+            2 => {
+                let item_name = parts[1];
+                let item = Item::from_str(&format!("minecraft:{item_name}")).map_err(|_| {
+                    info!("Invalid item name: {}", item_name);
+                    anyhow!("Invalid item name: {}", item_name)
+                })?;
+
+                bot.try_pick_up_item(item).await;
+            }
+            _ => {
+                info!("Incorrect arguments for !pickup command");
+                return Err(anyhow!("Incorrect arguments for !pickup command"));
             }
         },
         "!killaura" => match parts.get(1) {
