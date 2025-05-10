@@ -12,13 +12,13 @@ use azalea::registry::{Block, EntityKind, Item};
 use azalea::swarm::prelude::*;
 use azalea::{BlockPos, prelude::*};
 use azalea::{chat::ChatPacket, entity::Position};
+use lickbot_plugins::entity_target::{EntityTarget, EntityTargets};
+use lickbot_plugins::mining::MiningExtrasClientExt;
 use lickbot_plugins::plugins::auto_eat::AutoEatPlugin;
 use lickbot_plugins::plugins::auto_look::{self, AutoLookPlugin};
 use lickbot_plugins::plugins::auto_totem::{self, AutoTotemPlugin};
 use lickbot_plugins::plugins::kill_aura::{AutoKillClientExt, AutoKillPlugin};
 use lickbot_plugins::plugins::look_when_mining::LookMinePlugin;
-use lickbot_plugins::utils::entity_target::{EntityTarget, EntityTargets};
-use lickbot_plugins::utils::mining::MiningExtrasClientExt;
 use tracing::{error, info};
 
 const USERNAMES: [&str; 1] = ["lickbot"];

@@ -18,8 +18,8 @@ use azalea::{BlockPos, BotClientExt, Client, Vec3, direction_looking_at};
 use thiserror::Error;
 use tracing::{debug, warn};
 
+use crate::goals::{ReachBlockPosGoal, StandInBlockGoal, StandNextToBlockGoal};
 use crate::inventory::num_items_in_slots;
-use crate::utils::goals::{ReachBlockPosGoal, StandInBlockGoal, StandNextToBlockGoal};
 
 use super::nearest_entity::NearestEntityClientExt;
 

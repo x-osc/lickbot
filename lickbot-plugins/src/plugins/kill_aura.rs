@@ -16,9 +16,9 @@ use azalea::world::MinecraftEntityId;
 use azalea::{LookAtEvent, Vec3, prelude::*};
 use tracing::{debug, error, trace};
 
+use crate::entity_target::{EntityTarget, EntityTargets, TargetFinder};
 use crate::plugins;
-use crate::utils::entity_target::{EntityTarget, EntityTargets, TargetFinder};
-use crate::utils::weapon::best_weapon_in_hotbar;
+use crate::weapon::best_weapon_in_hotbar;
 
 /// Automatically swap weapon and attack nearby monsters
 pub struct AutoKillPlugin;
