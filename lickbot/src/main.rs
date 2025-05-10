@@ -361,6 +361,8 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
                     while bot.mine_blocks_with_best_tool(&blocks_pos).await.is_ok() {}
 
                     // wait for the item to drop
+                    // TODO: make this wait for the item to fall as well so were not like trying to pick it up all the way from the top
+                    // actually could change try_pick_up_item to make it keep checking the position of the item
                     bot.wait_one_tick().await;
                     bot.wait_one_tick().await;
 
