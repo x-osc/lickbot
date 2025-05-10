@@ -182,6 +182,7 @@ impl MiningExtrasClientExt for Client {
 
         let inventory_items = &self.menu().slots()[self.menu().player_slots_range()];
         let num_items = num_items_in_slots(inventory_items, item);
+        debug!("num_items: {}", num_items);
 
         let goal = OrGoals(
             nearest_positions
