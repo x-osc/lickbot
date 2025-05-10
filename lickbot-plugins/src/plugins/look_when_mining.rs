@@ -9,6 +9,7 @@ use azalea::{
 };
 use bevy_ecs::prelude::*;
 
+/// A plugin that makes the player always look at the block they are mining.
 pub struct LookMinePlugin;
 
 impl Plugin for LookMinePlugin {

@@ -84,6 +84,7 @@ impl Debug for ReachBlockPosGoal {
     }
 }
 
+/// Move to a position where our head is directly adjacent to the given block.
 #[derive(Clone, Debug)]
 pub struct StandNextToBlockGoal {
     pub pos: BlockPos,
@@ -107,6 +108,7 @@ impl Goal for StandNextToBlockGoal {
     }
 }
 
+/// Move to a position where either head or feet are in the given block.
 #[derive(Clone, Debug)]
 pub struct StandInBlockGoal {
     pub pos: BlockPos,

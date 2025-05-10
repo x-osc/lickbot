@@ -23,15 +23,22 @@ use crate::utils::goals::{ReachBlockPosGoal, StandInBlockGoal, StandNextToBlockG
 use super::nearest_entity::NearestEntityClientExt;
 
 pub trait MiningExtrasClientExt {
+    //// Mines a block with the best tool in hotbar.
+    /// Also checks whether the block is mineable.
     fn mine_with_best_tool(
         &self,
         pos: &BlockPos,
     ) -> impl Future<Output = Result<(), MiningError>> + Send;
+    /// Mines a checks whether the block is mineable and then mines it.
     fn checked_mine(&self, pos: &BlockPos) -> impl Future<Output = Result<(), MiningError>> + Send;
+    /// Goto the block and try to mine it.
+    /// Will retry 3 times.
     fn goto_and_try_mine_block(
         &self,
         pos: &BlockPos,
     ) -> impl Future<Output = Result<(), CantMineAnyError>> + Send;
+    /// Will mine the easiest to reach of the blocks in the list.
+    /// Will retry 3 times.
     fn goto_and_try_mine_blocks(
         &self,
         blocks_pos: &[BlockPos],
@@ -194,6 +201,8 @@ impl MiningExtrasClientExt for Client {
     }
 }
 
+/// Checks whether the block at the given position can be mined.
+/// Returns an error if the block is air, not breakable, or not reachable.
 pub fn can_mine_block(
     pos: &BlockPos,
     eye_pos: Vec3,

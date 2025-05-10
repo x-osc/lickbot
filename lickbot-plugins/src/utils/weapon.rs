@@ -22,6 +22,9 @@ pub fn best_weapon_in_hotbar(menu: &Menu) -> usize {
         .0
 }
 
+/// Returns the dps of the item.
+/// Takes into account invulnability frames.
+/// This means the attack speed is capped at 2 per second because invulnability frames are 0.5 seconds long.
 pub fn get_dps_capped(item: &ItemStack) -> f64 {
     let (damage, attack_speed) = get_damage_and_attack_speed_durability(item);
 
@@ -30,12 +33,15 @@ pub fn get_dps_capped(item: &ItemStack) -> f64 {
     damage * capped_attack_speed
 }
 
+/// Returns the dps of the item.
+/// Does not take into account invulnability frames.
 pub fn get_dps(item: &ItemStack) -> f64 {
     let (damage, attack_speed) = get_damage_and_attack_speed_durability(item);
 
     damage * attack_speed
 }
 
+/// Returns the dps of the item with a fancy formula to prioritize weapons with a faster attack speed.
 pub fn get_dps_fancy(item: &ItemStack) -> f64 {
     let (damage, attack_speed) = get_damage_and_attack_speed_durability(item);
 
@@ -50,6 +56,8 @@ pub fn get_dps_fancy(item: &ItemStack) -> f64 {
     new_dps
 }
 
+/// Returns the damage and attack speed of the item.
+/// If the item has durability but is not a weapon, the damage is reduced to incentivise not using items with durability.
 pub fn get_damage_and_attack_speed_durability(item: &ItemStack) -> (f64, f64) {
     // dps of fist
     let mut damage = 1.;
