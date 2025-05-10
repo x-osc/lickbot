@@ -19,7 +19,7 @@ use lickbot_plugins::plugins::auto_look::{self, AutoLookPlugin};
 use lickbot_plugins::plugins::auto_totem::{self, AutoTotemPlugin};
 use lickbot_plugins::plugins::kill_aura::{AutoKillClientExt, AutoKillPlugin};
 use lickbot_plugins::plugins::look_when_mining::LookMinePlugin;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 const USERNAMES: [&str; 1] = ["lickbot"];
 const ADDRESS: &str = "localhost:25555";
@@ -242,6 +242,43 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
 
                 bot.goto_and_try_mine_blocks(&blocks_pos).await?;
             }
+            3 => {
+                let block_name = parts[1];
+                let block = Block::from_str(&format!("minecraft:{block_name}")).map_err(|_| {
+                    info!("Invalid block name: {}", block_name);
+                    anyhow!("Invalid block name: {}", block_name)
+                })?;
+
+                let item_name = parts[2];
+                let item = Item::from_str(&format!("minecraft:{item_name}")).map_err(|_| {
+                    info!("Invalid item name: {}", item_name);
+                    anyhow!("Invalid item name: {}", item_name)
+                })?;
+
+                let blocks_pos: Vec<BlockPos> = bot
+                    .world()
+                    .read()
+                    .find_blocks(bot.position(), &block.into())
+                    .take(10)
+                    .collect();
+                if blocks_pos.is_empty() {
+                    info!("Could not find block nearby: {}", block_name);
+                    return Err(anyhow!("Could not find block nearby: {}", block_name));
+                }
+                info!("Mining block {} at positions {:?}", block, blocks_pos);
+                bot.goto_and_try_mine_blocks(&blocks_pos).await?;
+
+                // wait for the item to drop first
+                bot.wait_one_tick().await;
+                bot.wait_one_tick().await;
+
+                match bot.try_pick_up_item(item).await {
+                    Ok(_) => (),
+                    Err(_) => {
+                        warn!("Could not find item: {item}")
+                    }
+                }
+            }
             4 => {
                 let x: i32 = parts[1].parse()?;
                 let y: i32 = parts[2].parse()?;
@@ -278,6 +315,67 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
                     info!("Mining block {} at positions {:?}", block, blocks_pos);
 
                     bot.goto_and_try_mine_blocks(&blocks_pos).await?;
+                }
+            }
+            3 => {
+                let block_name = parts[1];
+                let block = Block::from_str(&format!("minecraft:{block_name}")).map_err(|_| {
+                    info!("Invalid block name: {}", block_name);
+                    anyhow!("Invalid block name: {}", block_name)
+                })?;
+
+                let item_name = parts[2];
+                let item = Item::from_str(&format!("minecraft:{item_name}")).map_err(|_| {
+                    info!("Invalid item name: {}", item_name);
+                    anyhow!("Invalid item name: {}", item_name)
+                })?;
+
+                loop {
+                    // mine a block
+                    let blocks_pos: Vec<BlockPos> = bot
+                        .world()
+                        .read()
+                        .find_blocks(bot.position(), &block.into())
+                        .take(10)
+                        .collect();
+                    if blocks_pos.is_empty() {
+                        info!("Could not find block nearby: {}", block_name);
+                        return Err(anyhow!("Could not find block nearby: {}", block_name));
+                    }
+                    info!("Mining block {} at positions {:?}", block, blocks_pos);
+                    bot.goto_and_try_mine_blocks(&blocks_pos).await?;
+
+                    // then, try to mine all other blocks it can reach
+                    let blocks_pos: Vec<BlockPos> = bot
+                        .world()
+                        .read()
+                        .find_blocks(bot.position(), &block.into())
+                        .take(15)
+                        .collect();
+                    if blocks_pos.is_empty() {
+                        info!("Could not find block nearby: {}", block_name);
+                        return Err(anyhow!("Could not find block nearby: {}", block_name));
+                    }
+
+                    // lol ???
+                    while bot.mine_blocks_with_best_tool(&blocks_pos).await.is_ok() {}
+
+                    // wait for the item to drop
+                    bot.wait_one_tick().await;
+                    bot.wait_one_tick().await;
+
+                    // then pick up all the items dropped
+                    // TODO: this actually only picks up one item lmaoo we need to make it pick up all
+                    match bot.try_pick_up_item(item).await {
+                        Ok(_) => (),
+                        Err(_) => {
+                            warn!("Could not find item: {item}")
+                        }
+                    }
+                    // do it again just in case we mined extra
+                    // it dosent matter if we cant find any items the second time
+                    // because we already picked them up
+                    let _ = bot.try_pick_up_item(item).await;
                 }
             }
             _ => {

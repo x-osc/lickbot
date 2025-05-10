@@ -16,7 +16,7 @@ use azalea::registry::Item;
 use azalea::world::ChunkStorage;
 use azalea::{BlockPos, BotClientExt, Client, Vec3, direction_looking_at};
 use thiserror::Error;
-use tracing::{debug, warn};
+use tracing::{debug, info, warn};
 
 use crate::goals::{ReachBlockPosGoal, StandInBlockGoal, StandNextToBlockGoal};
 use crate::inventory::num_items_in_slots;
@@ -26,10 +26,15 @@ use super::nearest_entity::NearestEntityClientExt;
 pub trait MiningExtrasClientExt {
     //// Mines a block with the best tool in hotbar.
     /// Also checks whether the block is mineable.
-    fn mine_with_best_tool(
+    fn mine_block_with_best_tool(
         &self,
         pos: &BlockPos,
     ) -> impl Future<Output = Result<(), MiningError>> + Send;
+    /// Mines one of the blocks in the list with the best tool in hotbar.
+    fn mine_blocks_with_best_tool(
+        &self,
+        blocks_pos: &[BlockPos],
+    ) -> impl Future<Output = Result<(), CantMineAnyError>> + Send;
     /// Mines a checks whether the block is mineable and then mines it.
     fn checked_mine(&self, pos: &BlockPos) -> impl Future<Output = Result<(), MiningError>> + Send;
     /// Goto the block and try to mine it.
@@ -51,7 +56,7 @@ pub trait MiningExtrasClientExt {
 }
 
 impl MiningExtrasClientExt for Client {
-    async fn mine_with_best_tool(&self, pos: &BlockPos) -> Result<(), MiningError> {
+    async fn mine_block_with_best_tool(&self, pos: &BlockPos) -> Result<(), MiningError> {
         can_mine_block(pos, self.eye_position(), &self.world().read().chunks)?;
 
         let block_state = self.world().read().get_block_state(pos).unwrap_or_default();
@@ -69,6 +74,23 @@ impl MiningExtrasClientExt for Client {
         self.mine(*pos).await;
 
         Ok(())
+    }
+
+    async fn mine_blocks_with_best_tool(
+        &self,
+        blocks_pos: &[BlockPos],
+    ) -> Result<(), CantMineAnyError> {
+        for block_pos in blocks_pos {
+            #[allow(clippy::redundant_pattern_matching)]
+            if let Ok(_) = self.mine_block_with_best_tool(block_pos).await {
+                return Ok(());
+            }
+        }
+
+        Err(CantMineAnyError {
+            // TODO: also horrible
+            blocks_pos: blocks_pos.to_vec(),
+        })
     }
 
     async fn checked_mine(&self, pos: &BlockPos) -> Result<(), MiningError> {
@@ -114,7 +136,10 @@ impl MiningExtrasClientExt for Client {
         self.wait_until_goto_target_reached().await;
 
         debug!("mining!");
-        if try_mine_blocks(self, blocks_pos).await.is_ok() {
+        if mine_blocks_with_best_tool_unless_already_mined(self, blocks_pos)
+            .await
+            .is_ok()
+        {
             return Ok(());
         }
 
@@ -137,7 +162,10 @@ impl MiningExtrasClientExt for Client {
         self.wait_until_goto_target_reached().await;
 
         debug!("mining!");
-        if try_mine_blocks(self, blocks_pos).await.is_ok() {
+        if mine_blocks_with_best_tool_unless_already_mined(self, blocks_pos)
+            .await
+            .is_ok()
+        {
             return Ok(());
         }
 
@@ -159,7 +187,10 @@ impl MiningExtrasClientExt for Client {
         });
         self.wait_until_goto_target_reached().await;
 
-        if try_mine_blocks(self, blocks_pos).await.is_ok() {
+        if mine_blocks_with_best_tool_unless_already_mined(self, blocks_pos)
+            .await
+            .is_ok()
+        {
             return Ok(());
         }
 
@@ -184,6 +215,13 @@ impl MiningExtrasClientExt for Client {
         let num_items = num_items_in_slots(inventory_items, item);
         debug!("num_items: {}", num_items);
 
+        info!(
+            "pickup items at {:?}",
+            nearest_positions
+                .iter()
+                .map(|pos| pos.to_block_pos_floor())
+                .collect::<Vec<_>>()
+        );
         let goal = OrGoals(
             nearest_positions
                 .iter()
@@ -249,7 +287,10 @@ pub fn can_mine_block(
     Ok(())
 }
 
-async fn try_mine_blocks(bot: &Client, blocks_pos: &[BlockPos]) -> Result<(), CantMineAnyError> {
+async fn mine_blocks_with_best_tool_unless_already_mined(
+    bot: &Client,
+    blocks_pos: &[BlockPos],
+) -> Result<(), CantMineAnyError> {
     for block_pos in blocks_pos {
         let block_state = bot
             .world()
@@ -268,7 +309,7 @@ async fn try_mine_blocks(bot: &Client, blocks_pos: &[BlockPos]) -> Result<(), Ca
             continue;
         }
 
-        match bot.mine_with_best_tool(block_pos).await {
+        match bot.mine_block_with_best_tool(block_pos).await {
             Ok(_) => {
                 return Ok(());
             }

@@ -2,3 +2,4 @@
  - check sightline for lookat
  - add components for killaura and autoeat
  - might have check instance_name for some queries idk ???
+ - main.rs line 368
