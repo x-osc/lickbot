@@ -294,7 +294,7 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
                 })?;
                 info!("Picking up item: {}", item);
 
-                bot.try_pick_up_item(item).await;
+                bot.try_pick_up_item(item).await?;
             }
             _ => {
                 info!("Incorrect arguments for !pickup command");

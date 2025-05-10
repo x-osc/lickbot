@@ -43,7 +43,10 @@ pub trait MiningExtrasClientExt {
         &self,
         blocks_pos: &[BlockPos],
     ) -> impl std::future::Future<Output = Result<(), CantMineAnyError>> + Send;
-    fn try_pick_up_item(&self, item: Item) -> impl std::future::Future<Output = ()> + Send;
+    fn try_pick_up_item(
+        &self,
+        item: Item,
+    ) -> impl std::future::Future<Output = Result<(), NoItemsError>> + Send;
 }
 
 impl MiningExtrasClientExt for Client {
@@ -166,14 +169,14 @@ impl MiningExtrasClientExt for Client {
         })
     }
 
-    async fn try_pick_up_item(&self, item: Item) {
+    async fn try_pick_up_item(&self, item: Item) -> Result<(), NoItemsError> {
         let nearest_items = self.nearest_items_by_distance(item, 20.).take(5);
         let nearest_positions: Vec<_> = nearest_items
             .map(|entity| *self.ecs.lock().get::<Position>(entity).unwrap())
             .collect();
 
         if nearest_positions.is_empty() {
-            return;
+            return Err(NoItemsError);
         }
 
         let goal = OrGoals(
@@ -195,6 +198,8 @@ impl MiningExtrasClientExt for Client {
         });
 
         self.wait_until_goto_target_reached().await;
+
+        Ok(())
     }
 }
 
@@ -281,11 +286,18 @@ pub enum MiningError {
 pub struct CantMineAnyError {
     pub blocks_pos: Vec<BlockPos>,
 }
-
 impl Display for CantMineAnyError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Cant mine any of the blocks: {:?}", self.blocks_pos)
     }
 }
-
 impl Error for CantMineAnyError {}
+
+#[derive(Debug)]
+pub struct NoItemsError;
+impl Display for NoItemsError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "No items found")
+    }
+}
+impl Error for NoItemsError {}
