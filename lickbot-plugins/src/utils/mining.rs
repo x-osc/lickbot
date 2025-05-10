@@ -6,7 +6,6 @@ use std::time::Duration;
 use azalea::auto_tool::best_tool_in_hotbar_for_block;
 use azalea::blocks::Block;
 use azalea::entity::Position;
-use azalea::entity::metadata::ItemItem;
 use azalea::interact::pick;
 use azalea::inventory::SetSelectedHotbarSlotEvent;
 use azalea::pathfinder::astar::PathfinderTimeout;
@@ -14,13 +13,14 @@ use azalea::pathfinder::goals::OrGoals;
 use azalea::pathfinder::{GotoEvent, moves};
 use azalea::prelude::PathfinderClientExt;
 use azalea::registry::Item;
-use azalea::world::{ChunkStorage, InstanceName};
+use azalea::world::ChunkStorage;
 use azalea::{BlockPos, BotClientExt, Client, Vec3, direction_looking_at};
-use bevy_ecs::entity::Entity;
 use thiserror::Error;
 use tracing::{debug, warn};
 
 use crate::utils::goals::{ReachBlockPosGoal, StandInBlockGoal, StandNextToBlockGoal};
+
+use super::nearest_entity::NearestEntityClientExt;
 
 pub trait MiningExtrasClientExt {
     fn mine_with_best_tool(
@@ -163,47 +163,32 @@ impl MiningExtrasClientExt for Client {
     }
 
     async fn try_pick_up_item(&self, item: Item) {
-        let mut nearest_position: Option<Vec3> = None;
-        let mut nearest_distance = f64::MAX;
-        {
-            let mut item_query = self
-                .ecs
-                .lock()
-                .query::<(Entity, &ItemItem, &Position, &InstanceName)>();
-            let client_instance_name = self.component::<InstanceName>();
-            let client_position = self.eye_position();
+        let nearest_items = self.nearest_items_by_distance(item, 20.).take(5);
+        let nearest_positions: Vec<_> = nearest_items
+            .map(|entity| *self.ecs.lock().get::<Position>(entity).unwrap())
+            .collect();
 
-            for (_entity, item_component, position, instance_name) in
-                item_query.iter(&self.ecs.lock())
-            {
-                if instance_name != &client_instance_name {
-                    continue;
-                }
-
-                if item_component.kind() != item {
-                    continue;
-                }
-
-                let distance = client_position.distance_squared_to(position);
-                if distance < (20. * 20.) && distance < nearest_distance {
-                    nearest_distance = distance;
-                    nearest_position = Some(position.into());
-                }
-            }
+        if nearest_positions.is_empty() {
+            return;
         }
 
-        if let Some(nearest_position) = nearest_position {
-            self.ecs.lock().send_event(GotoEvent {
-                entity: self.entity,
-                goal: Arc::new(StandInBlockGoal {
-                    pos: nearest_position.to_block_pos_floor(),
-                }),
-                successors_fn: moves::default_move,
-                allow_mining: true,
-                min_timeout: PathfinderTimeout::Time(Duration::from_secs(2)),
-                max_timeout: PathfinderTimeout::Time(Duration::from_secs(10)),
-            });
-        }
+        let goal = OrGoals(
+            nearest_positions
+                .iter()
+                .map(|pos| StandInBlockGoal {
+                    pos: pos.to_block_pos_floor(),
+                })
+                .collect(),
+        );
+
+        self.ecs.lock().send_event(GotoEvent {
+            entity: self.entity,
+            goal: Arc::new(goal),
+            successors_fn: moves::default_move,
+            allow_mining: true,
+            min_timeout: PathfinderTimeout::Time(Duration::from_secs(2)),
+            max_timeout: PathfinderTimeout::Time(Duration::from_secs(10)),
+        });
 
         self.wait_until_goto_target_reached().await;
     }

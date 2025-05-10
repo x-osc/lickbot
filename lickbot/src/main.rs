@@ -292,6 +292,7 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
                     info!("Invalid item name: {}", item_name);
                     anyhow!("Invalid item name: {}", item_name)
                 })?;
+                info!("Picking up item: {}", item);
 
                 bot.try_pick_up_item(item).await;
             }
