@@ -48,10 +48,7 @@ pub trait MiningExtrasClientExt {
 
 impl MiningExtrasClientExt for Client {
     async fn mine_with_best_tool(&self, pos: &BlockPos) -> Result<(), MiningError> {
-        match can_mine_block(pos, self.eye_position(), &self.world().read().chunks) {
-            Ok(_) => (),
-            Err(e) => return Err(e),
-        }
+        can_mine_block(pos, self.eye_position(), &self.world().read().chunks)?;
 
         let block_state = self.world().read().get_block_state(pos).unwrap_or_default();
         let best_tool_result = best_tool_in_hotbar_for_block(block_state, &self.menu());
