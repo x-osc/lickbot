@@ -18,6 +18,7 @@ use azalea::{BlockPos, BotClientExt, Client, Vec3, direction_looking_at};
 use thiserror::Error;
 use tracing::{debug, warn};
 
+use crate::inventory::num_items_in_slots;
 use crate::utils::goals::{ReachBlockPosGoal, StandInBlockGoal, StandNextToBlockGoal};
 
 use super::nearest_entity::NearestEntityClientExt;
@@ -179,6 +180,9 @@ impl MiningExtrasClientExt for Client {
             return Err(NoItemsError);
         }
 
+        let inventory_items = &self.menu().slots()[self.menu().player_slots_range()];
+        let num_items = num_items_in_slots(inventory_items, item);
+
         let goal = OrGoals(
             nearest_positions
                 .iter()
@@ -199,7 +203,15 @@ impl MiningExtrasClientExt for Client {
 
         self.wait_until_goto_target_reached().await;
 
-        Ok(())
+        let mut tick_broadcaster = self.get_tick_broadcaster();
+        while tick_broadcaster.recv().await.is_ok() {
+            let inventory_items = &self.menu().slots()[self.menu().player_slots_range()];
+            if num_items_in_slots(inventory_items, item) > num_items {
+                return Ok(());
+            }
+        }
+
+        Err(NoItemsError)
     }
 }
 
