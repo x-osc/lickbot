@@ -8,18 +8,17 @@ use azalea::{
     Hunger,
     app::{App, Plugin},
     ecs::prelude::*,
-    entity::{LocalEntity, LookDirection, metadata::Player},
+    entity::{LocalEntity, metadata::Player},
+    interact::StartUseItemEvent,
     inventory::{
         ContainerClickEvent, Inventory, InventorySet, SetSelectedHotbarSlotEvent,
         operations::{ClickOperation, SwapClick},
     },
     mining::continue_mining_block,
-    packet::game::{SendPacketEvent, handle_outgoing_packets},
+    packet::game::handle_outgoing_packets,
     physics::PhysicsSet,
     prelude::*,
-    protocol::packets::game::{
-        ServerboundGamePacket, ServerboundUseItem, s_interact::InteractionHand,
-    },
+    protocol::packets::game::s_interact::InteractionHand,
     registry::Item,
 };
 use tracing::{debug, trace};
@@ -46,20 +45,14 @@ impl Plugin for AutoEatPlugin {
 #[allow(clippy::type_complexity)]
 pub fn handle_auto_eat(
     mut query: Query<
-        (
-            Entity,
-            &Hunger,
-            &Inventory,
-            &LookDirection,
-            Option<&AutoKill>,
-        ),
+        (Entity, &Hunger, &Inventory, Option<&AutoKill>),
         (With<Player>, With<LocalEntity>),
     >,
-    mut packet_events: EventWriter<SendPacketEvent>,
+    mut start_use_item_events: EventWriter<StartUseItemEvent>,
     mut container_click_events: EventWriter<ContainerClickEvent>,
     mut set_selected_hotbar_slot_events: EventWriter<SetSelectedHotbarSlotEvent>,
 ) {
-    for (entity, hunger, inventory, direction, auto_kill) in &mut query {
+    for (entity, hunger, inventory, auto_kill) in &mut query {
         // dont eat if killing
         if let Some(auto_kill) = auto_kill {
             if auto_kill.is_attacking {
@@ -113,16 +106,10 @@ pub fn handle_auto_eat(
             }
         }
 
-        let packet = ServerboundGamePacket::UseItem(ServerboundUseItem {
+        start_use_item_events.write(StartUseItemEvent {
+            entity,
             hand: InteractionHand::MainHand,
-            pitch: direction.x_rot,
-            yaw: direction.y_rot,
-            sequence: 0,
-        });
-
-        packet_events.write(SendPacketEvent {
-            sent_by: entity,
-            packet,
+            force_block: None,
         });
     }
 }

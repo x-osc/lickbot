@@ -5,6 +5,7 @@ use std::time::Duration;
 
 use azalea::auto_tool::best_tool_in_hotbar_for_block;
 use azalea::blocks::Block;
+use azalea::core::hit_result::HitResult;
 use azalea::entity::Position;
 use azalea::interact::pick;
 use azalea::inventory::SetSelectedHotbarSlotEvent;
@@ -279,7 +280,12 @@ pub fn can_mine_block(
     }
 
     let look_direction = direction_looking_at(&eye_pos, &pos.center());
-    let block_hit_result = pick(&look_direction, &eye_pos, chunks, actual_pick_range);
+    let block_hit_result = match pick(&look_direction, &eye_pos, chunks, actual_pick_range) {
+        HitResult::Block(block_hit_result) => block_hit_result,
+        // there is an entity in the way
+        HitResult::Entity => return Err(MiningError::EntityBlocking),
+    };
+
     if !(block_hit_result.block_pos == *pos) {
         return Err(MiningError::BlockIsNotReachable);
     }
@@ -334,6 +340,8 @@ pub enum MiningError {
     BlockIsNotBreakable,
     #[error("Block is not reachable")]
     BlockIsNotReachable,
+    #[error("there is an entity blocking the block")]
+    EntityBlocking,
 }
 
 #[derive(Debug)]

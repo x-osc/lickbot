@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 
+use azalea::core::hit_result::HitResult;
 use azalea::interact::pick;
 use azalea::pathfinder::goals::{BlockPosGoal, Goal};
 use azalea::world::ChunkStorage;
@@ -45,14 +46,17 @@ impl Goal for ReachBlockPosGoal {
 
         let eye_position = n.to_vec3_floored() + Vec3::new(0.5, 1.62, 0.5);
         let look_direction = direction_looking_at(&eye_position, &self.pos.center());
-        let block_hit_result = pick(
+
+        match pick(
             &look_direction,
             &eye_position,
             &self.chunk_storage,
             self.distance,
-        );
-
-        block_hit_result.block_pos == self.pos
+        ) {
+            HitResult::Block(block_hit_result) => block_hit_result.block_pos == self.pos,
+            // there is an entity in the way
+            HitResult::Entity => false,
+        }
     }
 }
 
