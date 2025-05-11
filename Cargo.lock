@@ -1786,6 +1786,7 @@ version = "0.1.0"
 dependencies = [
  "azalea",
  "bevy_ecs",
+ "indexmap",
  "thiserror 2.0.12",
  "tracing",
 ]

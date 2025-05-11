@@ -16,3 +16,43 @@ pub fn num_items_in_slots(slots: &[ItemStack], item: Item) -> i32 {
         })
         .sum()
 }
+
+#[cfg(test)]
+mod tests {
+    use azalea::inventory::{DataComponentPatch, ItemStack, ItemStackData};
+    use azalea::registry::Item;
+    use indexmap::IndexMap;
+
+    use super::num_items_in_slots;
+
+    #[test]
+    fn test_num_items_in_slots() {
+        let slots = vec![
+            ItemStack::Present(ItemStackData {
+                kind: Item::Diamond,
+                count: 17,
+                components: DataComponentPatch {
+                    components: IndexMap::new(),
+                },
+            }),
+            ItemStack::Present(ItemStackData {
+                kind: Item::Diamond,
+                count: 3,
+                components: DataComponentPatch {
+                    components: IndexMap::new(),
+                },
+            }),
+            ItemStack::Empty,
+            ItemStack::Present(ItemStackData {
+                kind: Item::Dirt,
+                count: 5,
+                components: DataComponentPatch {
+                    components: IndexMap::new(),
+                },
+            }),
+        ];
+
+        let total = num_items_in_slots(&slots, Item::Diamond);
+        assert_eq!(total, 20);
+    }
+}
