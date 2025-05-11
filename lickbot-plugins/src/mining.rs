@@ -88,10 +88,7 @@ impl MiningExtrasClientExt for Client {
             }
         }
 
-        Err(CantMineAnyError {
-            // TODO: also horrible
-            blocks_pos: blocks_pos.to_vec(),
-        })
+        Err(CantMineAnyError)
     }
 
     async fn checked_mine(&self, pos: &BlockPos) -> Result<(), MiningError> {
@@ -197,9 +194,7 @@ impl MiningExtrasClientExt for Client {
 
         warn!("could not mine any blocks, returning");
 
-        Err(CantMineAnyError {
-            blocks_pos: blocks_pos.to_vec(),
-        })
+        Err(CantMineAnyError)
     }
 
     async fn try_pick_up_item(&self, item: Item) -> Result<(), NoItemsError> {
@@ -325,11 +320,7 @@ async fn mine_blocks_with_best_tool_unless_already_mined(
         }
     }
 
-    Err(CantMineAnyError {
-        // TODO: this is horrible
-        // actually now that i changed it its not so horrible but still pretty bad we should change it
-        blocks_pos: blocks_pos.to_vec(),
-    })
+    Err(CantMineAnyError)
 }
 
 #[derive(Debug, Error)]
@@ -345,12 +336,10 @@ pub enum MiningError {
 }
 
 #[derive(Debug)]
-pub struct CantMineAnyError {
-    pub blocks_pos: Vec<BlockPos>,
-}
+pub struct CantMineAnyError;
 impl Display for CantMineAnyError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Cant mine any of the blocks: {:?}", self.blocks_pos)
+        write!(f, "Cant mine any blocks requested")
     }
 }
 impl Error for CantMineAnyError {}
