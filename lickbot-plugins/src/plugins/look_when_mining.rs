@@ -4,7 +4,6 @@ use azalea::{
     entity::{LocalEntity, metadata::Player},
     mining::{MineBlockPos, MiningSet},
     pathfinder::Pathfinder,
-    physics::PhysicsSet,
     prelude::*,
 };
 use bevy_ecs::prelude::*;
@@ -14,10 +13,7 @@ pub struct LookMinePlugin;
 
 impl Plugin for LookMinePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            GameTick,
-            look_while_mining.after(MiningSet).before(PhysicsSet),
-        );
+        app.add_systems(GameTick, look_while_mining.after(MiningSet));
     }
 }
 
@@ -29,10 +25,10 @@ pub fn look_while_mining(
 ) {
     for (entity, mining_component, pathfinder) in &query {
         // let pathfinder handle looking at
-        if let Some(pathfinder) = pathfinder {
-            if pathfinder.goal.is_some() {
-                continue;
-            }
+        if let Some(pathfinder) = pathfinder
+            && pathfinder.goal.is_some()
+        {
+            continue;
         }
 
         if let Some(pos) = **mining_component {

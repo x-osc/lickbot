@@ -86,10 +86,10 @@ pub fn handle_auto_kill(
 
         auto_kill.is_attacking = false;
 
-        if let Some(pathfinder) = pathfinder {
-            if pathfinder.goal.is_some() {
-                continue;
-            }
+        if let Some(pathfinder) = pathfinder
+            && pathfinder.goal.is_some()
+        {
+            continue;
         }
 
         let Some(target) = targets.nearest_to_entity(entity, &auto_kill.targets, 3.2) else {

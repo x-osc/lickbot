@@ -13,7 +13,7 @@ use azalea::swarm::prelude::*;
 use azalea::{BlockPos, prelude::*};
 use azalea::{chat::ChatPacket, entity::Position};
 use lickbot_plugins::entity_target::{EntityTarget, EntityTargets};
-use lickbot_plugins::mining::MiningExtrasClientExt;
+use lickbot_plugins::mining::{CantMineAnyError, MiningExtrasClientExt};
 use lickbot_plugins::plugins::auto_eat::AutoEatPlugin;
 use lickbot_plugins::plugins::auto_look::{self, AutoLookPlugin};
 use lickbot_plugins::plugins::auto_totem::{self, AutoTotemPlugin};
@@ -122,8 +122,9 @@ async fn swarm_handle(swarm: Swarm, event: SwarmEvent, _state: SwarmState) -> Re
             );
             tokio::time::sleep(Duration::from_millis(500)).await;
             swarm
-                .add_and_retry_forever_with_opts(account, State::default(), join_opts)
-                .await;
+                .add_with_opts(account, State::default(), join_opts)
+                .await
+                .unwrap();
         }
         SwarmEvent::Chat(chat) => {
             if [
@@ -269,8 +270,7 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
                 bot.goto_and_try_mine_blocks(&blocks_pos).await?;
 
                 // wait for the item to drop first
-                bot.wait_one_tick().await;
-                bot.wait_one_tick().await;
+                bot.wait_ticks(5).await;
 
                 match bot.try_pick_up_item(item).await {
                     Ok(_) => (),
@@ -357,14 +357,18 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
                         return Err(anyhow!("Could not find block nearby: {}", block_name));
                     }
 
-                    // lol ???
-                    while bot.mine_blocks_with_best_tool(&blocks_pos).await.is_ok() {}
+                    #[allow(clippy::while_let_loop)]
+                    loop {
+                        match bot.mine_blocks_with_best_tool(&blocks_pos).await {
+                            Ok(()) => (),
+                            Err(CantMineAnyError) => break,
+                        }
+                    }
 
                     // wait for the item to drop
                     // TODO: make this wait for the item to fall as well so were not like trying to pick it up all the way from the top
                     // actually could change try_pick_up_item to make it keep checking the position of the item
-                    bot.wait_one_tick().await;
-                    bot.wait_one_tick().await;
+                    bot.wait_ticks(5).await;
 
                     // then pick up all the items dropped
                     // TODO: this actually only picks up one item lmaoo we need to make it pick up all

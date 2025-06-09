@@ -5,7 +5,6 @@
 use std::{cmp::Ordering, collections::HashMap, sync::LazyLock};
 
 use azalea::{
-    Hunger,
     app::{App, Plugin},
     ecs::prelude::*,
     entity::{LocalEntity, metadata::Player},
@@ -14,6 +13,7 @@ use azalea::{
         ContainerClickEvent, Inventory, InventorySet, SetSelectedHotbarSlotEvent,
         operations::{ClickOperation, SwapClick},
     },
+    local_player::Hunger,
     mining::continue_mining_block,
     packet::game::handle_outgoing_packets,
     physics::PhysicsSet,
@@ -54,10 +54,10 @@ pub fn handle_auto_eat(
 ) {
     for (entity, hunger, inventory, auto_kill) in &mut query {
         // dont eat if killing
-        if let Some(auto_kill) = auto_kill {
-            if auto_kill.is_attacking {
-                continue;
-            }
+        if let Some(auto_kill) = auto_kill
+            && auto_kill.is_attacking
+        {
+            continue;
         }
 
         if hunger.food >= 18 {

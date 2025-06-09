@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use azalea::auto_tool::best_tool_in_hotbar_for_block;
-use azalea::blocks::Block;
+use azalea::blocks::BlockTrait;
 use azalea::core::hit_result::HitResult;
 use azalea::entity::Position;
 use azalea::interact::pick;
@@ -261,7 +261,7 @@ pub fn can_mine_block(
     if block_state.is_air() {
         return Err(MiningError::BlockIsAir);
     }
-    let block: Box<dyn Block> = block_state.into();
+    let block: Box<dyn BlockTrait> = block_state.into();
     if (*block).behavior().destroy_time < -1. {
         return Err(MiningError::BlockIsNotBreakable);
     }

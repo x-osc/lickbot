@@ -2,8 +2,9 @@ use std::ops::{Deref, DerefMut};
 
 use azalea::entity::metadata::AbstractMonster;
 use azalea::entity::{self, Dead, LocalEntity, Position};
+use azalea::player::GameProfileComponent;
+use azalea::registry;
 use azalea::world::{InstanceName, MinecraftEntityId};
-use azalea::{GameProfileComponent, registry};
 use bevy_ecs::prelude::*;
 use bevy_ecs::system::SystemParam;
 
@@ -67,24 +68,24 @@ fn is_entity_in_targets(entity: &Entity, targets: &EntityTargets, query: &Target
 
         match target {
             EntityTarget::EntityKind(kind) => {
-                if let Some(entity_kind) = entity_kind {
-                    if **entity_kind == *kind {
-                        return true;
-                    }
+                if let Some(entity_kind) = entity_kind
+                    && **entity_kind == *kind
+                {
+                    return true;
                 }
             }
             EntityTarget::EntityId(id) => {
-                if let Some(entity_id) = entity_id {
-                    if entity_id == id {
-                        return true;
-                    }
+                if let Some(entity_id) = entity_id
+                    && entity_id == id
+                {
+                    return true;
                 }
             }
             EntityTarget::PlayerName(name) => {
-                if let Some(game_profile) = game_profile {
-                    if game_profile.name == *name {
-                        return true;
-                    }
+                if let Some(game_profile) = game_profile
+                    && game_profile.name == *name
+                {
+                    return true;
                 }
             }
             EntityTarget::AllMonsters => {
