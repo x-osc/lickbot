@@ -365,23 +365,19 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
                         }
                     }
 
-                    // wait for the item to drop
+                    // wait for the items to drop
                     // TODO: make this wait for the item to fall as well so were not like trying to pick it up all the way from the top
                     // actually could change try_pick_up_item to make it keep checking the position of the item
                     bot.wait_ticks(5).await;
 
                     // then pick up all the items dropped
-                    // TODO: this actually only picks up one item lmaoo we need to make it pick up all
-                    match bot.try_pick_up_item(item).await {
-                        Ok(_) => (),
-                        Err(_) => {
-                            warn!("Could not find item: {item}")
+                    #[allow(clippy::while_let_loop)]
+                    loop {
+                        match bot.try_pick_up_item(item).await {
+                            Ok(_) => (),
+                            Err(_) => break,
                         }
                     }
-                    // do it again just in case we mined extra
-                    // it dosent matter if we cant find any items the second time
-                    // because we already picked them up
-                    let _ = bot.try_pick_up_item(item).await;
                 }
             }
             _ => {
