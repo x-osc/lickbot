@@ -3,12 +3,11 @@ use std::fmt::Display;
 use std::sync::Arc;
 use std::time::Duration;
 
-use azalea::auto_tool::best_tool_in_hotbar_for_block;
+use azalea::auto_tool::AutoToolClientExt;
 use azalea::blocks::BlockTrait;
 use azalea::core::hit_result::HitResult;
 use azalea::entity::Position;
 use azalea::interact::pick;
-use azalea::inventory::SetSelectedHotbarSlotEvent;
 use azalea::pathfinder::astar::PathfinderTimeout;
 use azalea::pathfinder::goals::OrGoals;
 use azalea::pathfinder::{GotoEvent, moves};
@@ -60,19 +59,8 @@ impl MiningExtrasClientExt for Client {
     async fn mine_block_with_best_tool(&self, pos: &BlockPos) -> Result<(), MiningError> {
         can_mine_block(pos, self.eye_position(), &self.world().read().chunks)?;
 
-        let block_state = self.world().read().get_block_state(pos).unwrap_or_default();
-        let best_tool_result = best_tool_in_hotbar_for_block(block_state, &self.menu());
-        if best_tool_result.percentage_per_tick == 0. {
-            return Err(MiningError::BlockIsNotBreakable);
-        }
-
-        self.ecs.lock().send_event(SetSelectedHotbarSlotEvent {
-            entity: self.entity,
-            slot: best_tool_result.index as u8,
-        });
-
         self.look_at(pos.center());
-        self.mine(*pos).await;
+        self.mine_with_auto_tool(*pos).await;
 
         Ok(())
     }
@@ -257,7 +245,7 @@ pub fn can_mine_block(
     eye_pos: Vec3,
     chunks: &ChunkStorage,
 ) -> Result<(), MiningError> {
-    let block_state = chunks.get_block_state(pos).unwrap_or_default();
+    let block_state = chunks.get_block_state(*pos).unwrap_or_default();
     if block_state.is_air() {
         return Err(MiningError::BlockIsAir);
     }
@@ -296,7 +284,7 @@ async fn mine_blocks_with_best_tool_unless_already_mined(
         let block_state = bot
             .world()
             .read()
-            .get_block_state(block_pos)
+            .get_block_state(*block_pos)
             .unwrap_or_default();
         if block_state.is_air() {
             if block_pos.distance_squared_to(&bot.position().to_block_pos_ceil()) < 4 * 4 {
