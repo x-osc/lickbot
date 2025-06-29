@@ -8,6 +8,7 @@ repository.workspace = true
 [dependencies]
 azalea = { git = "https://github.com/x-osc/azalea", version = "*", branch = "dev" }
 thiserror.workspace = true
+tokio.workspace = true
 bevy_ecs.workspace = true
 tracing.workspace = true
 

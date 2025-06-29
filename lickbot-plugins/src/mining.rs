@@ -6,6 +6,7 @@ use std::time::Duration;
 use azalea::auto_tool::AutoToolClientExt;
 use azalea::blocks::BlockTrait;
 use azalea::core::hit_result::HitResult;
+use azalea::ecs::entity::Entity;
 use azalea::entity::Position;
 use azalea::interact::pick;
 use azalea::pathfinder::astar::PathfinderTimeout;
@@ -16,6 +17,7 @@ use azalea::registry::Item;
 use azalea::world::ChunkStorage;
 use azalea::{BlockPos, BotClientExt, Client, Vec3, direction_looking_at};
 use thiserror::Error;
+use tokio::sync::broadcast::error::RecvError;
 use tracing::{debug, info, warn};
 
 use crate::goals::{ReachBlockPosGoal, StandInBlockGoal, StandNextToBlockGoal};
@@ -49,7 +51,7 @@ pub trait MiningExtrasClientExt {
         &self,
         blocks_pos: &[BlockPos],
     ) -> impl std::future::Future<Output = Result<(), CantMineAnyError>> + Send;
-    fn try_pick_up_item(
+    fn pick_up_item(
         &self,
         item: Item,
     ) -> impl std::future::Future<Output = Result<(), NoItemsError>> + Send;
@@ -185,56 +187,123 @@ impl MiningExtrasClientExt for Client {
         Err(CantMineAnyError)
     }
 
-    async fn try_pick_up_item(&self, item: Item) -> Result<(), NoItemsError> {
-        let nearest_items = self.nearest_items_by_distance(item, 20.).take(5);
-        let nearest_positions: Vec<_> = nearest_items
-            .map(|entity| *self.ecs.lock().get::<Position>(entity).unwrap())
-            .collect();
+    async fn pick_up_item(&self, item: Item) -> Result<(), NoItemsError> {
+        // recalculate the nearest item and send a goto event to the location
+        // returns the entities and positions for the items
+        fn recalculate_and_send_path(
+            bot: &Client,
+            item: Item,
+        ) -> Result<(Vec<Entity>, Vec<Vec3>), NoItemsError> {
+            let nearest_items: Vec<Entity> =
+                bot.nearest_items_by_distance(item, 20.).take(5).collect();
+            let nearest_positions: Vec<_> = nearest_items
+                .iter()
+                .map(|entity| **bot.ecs.lock().get::<Position>(*entity).unwrap())
+                .collect();
 
-        if nearest_positions.is_empty() {
-            return Err(NoItemsError);
+            if nearest_positions.is_empty() {
+                return Err(NoItemsError);
+            }
+
+            info!(
+                "pickup items at {:?}",
+                nearest_positions
+                    .iter()
+                    .map(|pos| pos.to_block_pos_floor())
+                    .collect::<Vec<_>>()
+            );
+            let goal = OrGoals(
+                nearest_positions
+                    .iter()
+                    .map(|pos| StandInBlockGoal {
+                        pos: pos.to_block_pos_floor(),
+                    })
+                    .collect(),
+            );
+
+            bot.ecs.lock().send_event(GotoEvent {
+                entity: bot.entity,
+                goal: Arc::new(goal),
+                successors_fn: moves::default_move,
+                allow_mining: true,
+                min_timeout: PathfinderTimeout::Time(Duration::from_secs(2)),
+                max_timeout: PathfinderTimeout::Time(Duration::from_secs(10)),
+            });
+
+            Ok((nearest_items, nearest_positions))
         }
+
+        let (mut prev_entities, mut prev_positions) = recalculate_and_send_path(self, item)?;
 
         let inventory_items = &self.menu().slots()[self.menu().player_slots_range()];
-        let num_items = num_items_in_slots(inventory_items, item);
-        debug!("num_items: {}", num_items);
+        let starting_num_items = num_items_in_slots(inventory_items, item);
+        debug!("num_items: {}", starting_num_items);
 
-        info!(
-            "pickup items at {:?}",
-            nearest_positions
-                .iter()
-                .map(|pos| pos.to_block_pos_floor())
-                .collect::<Vec<_>>()
-        );
-        let goal = OrGoals(
-            nearest_positions
-                .iter()
-                .map(|pos| StandInBlockGoal {
-                    pos: pos.to_block_pos_floor(),
-                })
-                .collect(),
-        );
-
-        self.ecs.lock().send_event(GotoEvent {
-            entity: self.entity,
-            goal: Arc::new(goal),
-            successors_fn: moves::default_move,
-            allow_mining: true,
-            min_timeout: PathfinderTimeout::Time(Duration::from_secs(2)),
-            max_timeout: PathfinderTimeout::Time(Duration::from_secs(10)),
-        });
-
-        self.wait_until_goto_target_reached().await;
+        self.wait_updates(2).await;
 
         let mut tick_broadcaster = self.get_tick_broadcaster();
-        while tick_broadcaster.recv().await.is_ok() {
+        loop {
+            // every tick
+            match tick_broadcaster.recv().await {
+                Ok(_) => (),
+                Err(RecvError::Closed) => {
+                    warn!("tick broadcaster closed");
+                    return Ok(());
+                }
+                Err(err) => {
+                    warn!("{err}");
+                    return Ok(());
+                }
+            };
+
+            // if we pick up an item, done
             let inventory_items = &self.menu().slots()[self.menu().player_slots_range()];
-            if num_items_in_slots(inventory_items, item) > num_items {
+            if num_items_in_slots(inventory_items, item) > starting_num_items {
+                self.stop_pathfinding();
                 return Ok(());
             }
-        }
 
-        Err(NoItemsError)
+            // if path is completed, uhh what
+            // return with warning
+            if self.is_goto_target_reached() {
+                warn!("goto target reached, but no items picked up");
+                return Ok(());
+            }
+
+            let nearest_items: Vec<Entity> =
+                self.nearest_items_by_distance(item, 20.).take(5).collect();
+            let nearest_positions: Vec<_> = nearest_items
+                .iter()
+                .map(|entity| **self.ecs.lock().get::<Position>(*entity).unwrap())
+                .collect();
+
+            if nearest_items.is_empty() {
+                return Err(NoItemsError);
+            }
+
+            // check if any of the items were removed
+            let missing = prev_entities
+                .iter()
+                .any(|prev_entity| !nearest_items.contains(prev_entity));
+
+            // check if any of the items moved
+            let moved =
+                nearest_positions
+                    .iter()
+                    .zip(prev_positions.iter())
+                    .any(|(new_pos, old_pos)| {
+                        new_pos.to_block_pos_floor() != old_pos.to_block_pos_floor()
+                    });
+
+            if moved || missing {
+                debug!("items moved, recalculating path");
+                self.stop_pathfinding();
+                // updates are required to make ecs not break and be dum dum
+                self.wait_updates(1).await;
+                (prev_entities, prev_positions) = recalculate_and_send_path(self, item)?;
+                self.wait_updates(1).await;
+            }
+        }
     }
 }
 

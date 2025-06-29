@@ -272,7 +272,7 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
                 // wait for the item to drop first
                 bot.wait_ticks(5).await;
 
-                match bot.try_pick_up_item(item).await {
+                match bot.pick_up_item(item).await {
                     Ok(_) => (),
                     Err(_) => {
                         warn!("Could not find item: {item}")
@@ -373,7 +373,7 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
                     // then pick up all the items dropped
                     #[allow(clippy::while_let_loop)]
                     loop {
-                        match bot.try_pick_up_item(item).await {
+                        match bot.pick_up_item(item).await {
                             Ok(_) => (),
                             Err(_) => break,
                         }
@@ -394,7 +394,7 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
                 })?;
                 info!("Picking up item: {}", item);
 
-                bot.try_pick_up_item(item).await?;
+                bot.pick_up_item(item).await?;
             }
             _ => {
                 info!("Incorrect arguments for !pickup command");
