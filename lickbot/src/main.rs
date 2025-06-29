@@ -19,7 +19,7 @@ use lickbot_plugins::plugins::auto_look::{self, AutoLookPlugin};
 use lickbot_plugins::plugins::auto_totem::{self, AutoTotemPlugin};
 use lickbot_plugins::plugins::kill_aura::{AutoKillClientExt, AutoKillPlugin};
 use lickbot_plugins::plugins::look_when_mining::LookMinePlugin;
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 
 const USERNAMES: [&str; 1] = ["lickbot"];
 const ADDRESS: &str = "localhost:25555";
@@ -352,10 +352,6 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
                         .find_blocks(bot.position(), &block.into())
                         .take(15)
                         .collect();
-                    if blocks_pos.is_empty() {
-                        info!("Could not find block nearby: {}", block_name);
-                        return Err(anyhow!("Could not find block nearby: {}", block_name));
-                    }
 
                     #[allow(clippy::while_let_loop)]
                     loop {
@@ -366,18 +362,21 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
                     }
 
                     // wait for the items to drop
-                    // TODO: make this wait for the item to fall as well so were not like trying to pick it up all the way from the top
-                    // actually could change try_pick_up_item to make it keep checking the position of the item
-                    bot.wait_ticks(5).await;
+                    bot.wait_ticks(4).await;
 
                     // then pick up all the items dropped
                     #[allow(clippy::while_let_loop)]
                     loop {
+                        debug!("picking up item: {item}");
                         match bot.pick_up_item(item).await {
                             Ok(_) => (),
                             Err(_) => break,
                         }
                     }
+
+                    debug!("restarting mining loop");
+
+                    bot.wait_updates(1).await; // just in case lmao
                 }
             }
             _ => {

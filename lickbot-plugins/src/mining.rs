@@ -233,6 +233,9 @@ impl MiningExtrasClientExt for Client {
             Ok((nearest_items, nearest_positions))
         }
 
+        // update needs to be here too to make sure ecs is not broken
+        self.wait_updates(2).await;
+
         let (mut prev_entities, mut prev_positions) = recalculate_and_send_path(self, item)?;
 
         let inventory_items = &self.menu().slots()[self.menu().player_slots_range()];
