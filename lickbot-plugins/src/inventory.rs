@@ -21,7 +21,6 @@ pub fn num_items_in_slots(slots: &[ItemStack], item: Item) -> i32 {
 mod tests {
     use azalea::inventory::{DataComponentPatch, ItemStack, ItemStackData};
     use azalea::registry::Item;
-    use indexmap::IndexMap;
 
     use super::num_items_in_slots;
 
@@ -31,24 +30,18 @@ mod tests {
             ItemStack::Present(ItemStackData {
                 kind: Item::Diamond,
                 count: 17,
-                components: DataComponentPatch {
-                    components: IndexMap::new(),
-                },
+                component_patch: DataComponentPatch::default(),
             }),
             ItemStack::Present(ItemStackData {
                 kind: Item::Diamond,
                 count: 3,
-                components: DataComponentPatch {
-                    components: IndexMap::new(),
-                },
+                component_patch: DataComponentPatch::default(),
             }),
             ItemStack::Empty,
             ItemStack::Present(ItemStackData {
                 kind: Item::Dirt,
                 count: 5,
-                components: DataComponentPatch {
-                    components: IndexMap::new(),
-                },
+                component_patch: DataComponentPatch::default(),
             }),
         ];
 

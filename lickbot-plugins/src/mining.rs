@@ -1,21 +1,18 @@
 use std::error::Error;
 use std::fmt::Display;
-use std::sync::Arc;
-use std::time::Duration;
 
 use azalea::auto_tool::AutoToolClientExt;
 use azalea::blocks::BlockTrait;
-use azalea::core::hit_result::HitResult;
-use azalea::ecs::entity::Entity;
+use azalea::bot::{BotClientExt, direction_looking_at};
 use azalea::entity::Position;
-use azalea::interact::pick;
-use azalea::pathfinder::astar::PathfinderTimeout;
+use azalea::interact::pick::pick_block;
+use azalea::pathfinder::PathfinderOpts;
 use azalea::pathfinder::goals::OrGoals;
-use azalea::pathfinder::{GotoEvent, moves};
 use azalea::prelude::PathfinderClientExt;
 use azalea::registry::Item;
 use azalea::world::ChunkStorage;
-use azalea::{BlockPos, BotClientExt, Client, Vec3, direction_looking_at};
+use azalea::{BlockPos, Client, Vec3};
+use bevy_ecs::entity::Entity;
 use thiserror::Error;
 use tokio::sync::broadcast::error::RecvError;
 use tracing::{debug, info, warn};
@@ -113,14 +110,7 @@ impl MiningExtrasClientExt for Client {
                 })
                 .collect(),
         );
-        self.ecs.lock().send_event(GotoEvent {
-            entity: self.entity,
-            goal: Arc::new(goal),
-            successors_fn: moves::default_move,
-            allow_mining: true,
-            min_timeout: PathfinderTimeout::Time(Duration::from_secs(2)),
-            max_timeout: PathfinderTimeout::Time(Duration::from_secs(10)),
-        });
+        self.start_goto_with_opts(goal, PathfinderOpts::new());
         self.wait_until_goto_target_reached().await;
 
         debug!("mining!");
@@ -139,14 +129,7 @@ impl MiningExtrasClientExt for Client {
                 .map(|pos| StandNextToBlockGoal { pos: *pos })
                 .collect(),
         );
-        self.ecs.lock().send_event(GotoEvent {
-            entity: self.entity,
-            goal: Arc::new(goal),
-            successors_fn: moves::default_move,
-            allow_mining: true,
-            min_timeout: PathfinderTimeout::Time(Duration::from_secs(2)),
-            max_timeout: PathfinderTimeout::Time(Duration::from_secs(10)),
-        });
+        self.start_goto_with_opts(goal, PathfinderOpts::new());
         self.wait_until_goto_target_reached().await;
 
         debug!("mining!");
@@ -165,14 +148,7 @@ impl MiningExtrasClientExt for Client {
                 .map(|pos| StandInBlockGoal { pos: *pos })
                 .collect(),
         );
-        self.ecs.lock().send_event(GotoEvent {
-            entity: self.entity,
-            goal: Arc::new(goal),
-            successors_fn: moves::default_move,
-            allow_mining: true,
-            min_timeout: PathfinderTimeout::Time(Duration::from_secs(2)),
-            max_timeout: PathfinderTimeout::Time(Duration::from_secs(10)),
-        });
+        self.start_goto_with_opts(goal, PathfinderOpts::new());
         self.wait_until_goto_target_reached().await;
 
         if mine_blocks_with_best_tool_unless_already_mined(self, blocks_pos)
@@ -221,14 +197,7 @@ impl MiningExtrasClientExt for Client {
                     .collect(),
             );
 
-            bot.ecs.lock().send_event(GotoEvent {
-                entity: bot.entity,
-                goal: Arc::new(goal),
-                successors_fn: moves::default_move,
-                allow_mining: true,
-                min_timeout: PathfinderTimeout::Time(Duration::from_secs(2)),
-                max_timeout: PathfinderTimeout::Time(Duration::from_secs(10)),
-            });
+            bot.start_goto_with_opts(goal, PathfinderOpts::new());
 
             Ok((nearest_items, nearest_positions))
         }
@@ -329,17 +298,13 @@ pub fn can_mine_block(
     let max_pick_range = 6;
     let actual_pick_range = 3.5;
 
-    let distance = pos.distance_squared_to(&eye_pos.to_block_pos_ceil());
+    let distance = pos.distance_squared_to(eye_pos.to_block_pos_ceil());
     if distance > max_pick_range * max_pick_range {
         return Err(MiningError::BlockIsNotReachable);
     }
 
-    let look_direction = direction_looking_at(&eye_pos, &pos.center());
-    let block_hit_result = match pick(&look_direction, &eye_pos, chunks, actual_pick_range) {
-        HitResult::Block(block_hit_result) => block_hit_result,
-        // there is an entity in the way
-        HitResult::Entity => return Err(MiningError::EntityBlocking),
-    };
+    let look_direction = direction_looking_at(eye_pos, pos.center());
+    let block_hit_result = pick_block(look_direction, eye_pos, chunks, actual_pick_range);
 
     if !(block_hit_result.block_pos == *pos) {
         return Err(MiningError::BlockIsNotReachable);
@@ -359,7 +324,7 @@ async fn mine_blocks_with_best_tool_unless_already_mined(
             .get_block_state(*block_pos)
             .unwrap_or_default();
         if block_state.is_air() {
-            if block_pos.distance_squared_to(&bot.position().to_block_pos_ceil()) < 4 * 4 {
+            if block_pos.distance_squared_to(bot.position().to_block_pos_ceil()) < 4 * 4 {
                 // block was probably mined by the bot
                 warn!("block {} is mined, returning", block_pos);
                 return Ok(());

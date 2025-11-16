@@ -6,7 +6,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-azalea = { git = "https://github.com/x-osc/azalea", version = "*", branch = "dev" }
+azalea.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 bevy_ecs.workspace = true

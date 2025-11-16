@@ -6,14 +6,16 @@ use std::time::Instant;
 
 use azalea::app::{App, Plugin};
 use azalea::attack::{AttackEvent, AttackStrengthScale};
+use azalea::bot::LookAtEvent;
 use azalea::ecs::prelude::*;
+use azalea::entity::dimensions::EntityDimensions;
 use azalea::entity::metadata::Player;
-use azalea::entity::{EyeHeight, LocalEntity, Position};
-use azalea::inventory::{Inventory, InventorySet, SetSelectedHotbarSlotEvent};
+use azalea::entity::{LocalEntity, Position};
+use azalea::inventory::{Inventory, InventorySystems, SetSelectedHotbarSlotEvent};
 use azalea::pathfinder::Pathfinder;
-use azalea::physics::PhysicsSet;
+use azalea::physics::PhysicsSystems;
 use azalea::world::MinecraftEntityId;
-use azalea::{LookAtEvent, Vec3, prelude::*};
+use azalea::{Vec3, prelude::*};
 use tracing::{debug, error, trace};
 
 use crate::entity_target::{EntityTarget, EntityTargets, TargetFinder};
@@ -30,8 +32,8 @@ impl Plugin for AutoKillPlugin {
             handle_auto_kill
                 .after(plugins::auto_look::handle_auto_look)
                 .before(plugins::look_when_mining::look_while_mining)
-                .before(InventorySet)
-                .before(PhysicsSet),
+                .before(InventorySystems)
+                .before(PhysicsSystems),
         );
     }
 }
@@ -76,10 +78,10 @@ pub fn handle_auto_kill(
     attack_strengths: Query<&AttackStrengthScale, (With<Player>, With<LocalEntity>)>,
 
     targets: TargetFinder,
-    positions: Query<(&MinecraftEntityId, &Position, Option<&EyeHeight>)>,
-    mut look_at_events: EventWriter<LookAtEvent>,
-    mut attack_events: EventWriter<AttackEvent>,
-    mut set_selected_hotbar_slot_events: EventWriter<SetSelectedHotbarSlotEvent>,
+    positions: Query<(&MinecraftEntityId, &Position, Option<&EntityDimensions>)>,
+    mut look_at_events: MessageWriter<LookAtEvent>,
+    mut attack_events: MessageWriter<AttackEvent>,
+    mut commands: Commands,
 ) {
     for (entity, mut auto_kill, inventory, pathfinder) in &mut query {
         let start = Instant::now();
@@ -96,13 +98,13 @@ pub fn handle_auto_kill(
             continue;
         };
 
-        let Ok((target_id, target_pos, maybe_eye_height)) = positions.get(target) else {
+        let Ok((_, target_pos, maybe_dimensions)) = positions.get(target) else {
             continue;
         };
 
         let mut position: Vec3 = target_pos.into();
-        if let Some(eye_height) = maybe_eye_height {
-            position.y += f64::from(eye_height);
+        if let Some(dimensions) = maybe_dimensions {
+            position.y += f64::from(dimensions.eye_height);
         }
 
         auto_kill.is_attacking = true;
@@ -132,16 +134,13 @@ pub fn handle_auto_kill(
         let best_slot = best_weapon_in_hotbar(&inventory.inventory_menu) as u8;
         if inventory.selected_hotbar_slot != best_slot {
             debug!("setting selected weapon to slot {}", best_slot);
-            set_selected_hotbar_slot_events.write(SetSelectedHotbarSlotEvent {
+            commands.trigger(SetSelectedHotbarSlotEvent {
                 entity,
                 slot: best_slot,
             });
         }
 
-        attack_events.write(AttackEvent {
-            entity,
-            target: *target_id,
-        });
+        attack_events.write(AttackEvent { entity, target });
 
         let duration = start.elapsed();
         trace!("AutoKill took {:?}", duration);

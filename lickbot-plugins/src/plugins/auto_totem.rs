@@ -31,7 +31,7 @@ pub struct AutoTotem;
 #[allow(clippy::type_complexity)]
 pub fn handle_auto_totem(
     query: Query<(Entity, &Inventory), (With<AutoTotem>, With<Player>, With<LocalEntity>)>,
-    mut container_click_event: EventWriter<ContainerClickEvent>,
+    mut commands: Commands,
 ) {
     for (entity, inventory) in query.iter() {
         // guaranteed to be `Menu::Player`
@@ -64,7 +64,7 @@ pub fn handle_auto_totem(
         }
 
         if let Some(index) = totem_index {
-            container_click_event.write(ContainerClickEvent {
+            commands.trigger(ContainerClickEvent {
                 entity,
                 window_id: inventory.id,
                 operation: ClickOperation::Swap(SwapClick {

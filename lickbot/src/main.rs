@@ -1,23 +1,18 @@
 use std::str::FromStr;
-use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
 use anyhow::{Result, anyhow};
-use azalea::pathfinder::astar::PathfinderTimeout;
-use azalea::pathfinder::goals::{BlockPosGoal, Goal, XZGoal, YGoal};
-use azalea::pathfinder::moves::default_move;
-use azalea::pathfinder::{self, GotoEvent};
-use azalea::registry::{Block, EntityKind, Item};
+use azalea::pathfinder::PathfinderOpts;
+use azalea::pathfinder::debug::PathfinderDebugParticles;
+use azalea::pathfinder::goals::{BlockPosGoal, XZGoal, YGoal};
+use azalea::registry::{Block, Item};
 use azalea::swarm::prelude::*;
 use azalea::{BlockPos, prelude::*};
 use azalea::{chat::ChatPacket, entity::Position};
-use lickbot_plugins::entity_target::{EntityTarget, EntityTargets};
 use lickbot_plugins::mining::{CantMineAnyError, MiningExtrasClientExt};
-use lickbot_plugins::plugins::auto_eat::AutoEatPlugin;
 use lickbot_plugins::plugins::auto_look::{self, AutoLookPlugin};
 use lickbot_plugins::plugins::auto_totem::{self, AutoTotemPlugin};
-use lickbot_plugins::plugins::kill_aura::{AutoKillClientExt, AutoKillPlugin};
 use lickbot_plugins::plugins::look_when_mining::LookMinePlugin;
 use tracing::{debug, error, info, warn};
 
@@ -38,8 +33,6 @@ async fn main() {
     let mut swarm = SwarmBuilder::new()
         .add_plugins(AutoLookPlugin)
         .add_plugins(AutoTotemPlugin)
-        .add_plugins(AutoKillPlugin)
-        .add_plugins(AutoEatPlugin)
         .add_plugins(LookMinePlugin)
         .set_handler(handle)
         .set_swarm_handler(swarm_handle)
@@ -83,18 +76,17 @@ async fn handle(bot: Client, event: Event, state: State) -> Result<()> {
             bot.set_client_information(azalea::ClientInformation {
                 view_distance: 32,
                 ..Default::default()
-            })
-            .await;
+            });
             if PATHFINDER_DEBUG_PARTICLES {
                 bot.ecs
                     .lock()
                     .entity_mut(bot.entity)
-                    .insert(pathfinder::debug::PathfinderDebugParticles);
+                    .insert(PathfinderDebugParticles);
             }
         }
         Event::Spawn => {
             info!("{} has logged in to world", bot.username());
-            bot.enable_auto_kill(EntityTargets::new(&[EntityTarget::AllMonsters]));
+            // bot.enable_auto_kill(EntityTargets::new(&[EntityTarget::AllMonsters]));
             bot.ecs
                 .lock()
                 .entity_mut(bot.entity)
@@ -154,71 +146,61 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
         }
         "!health" => {
             let health = bot.health();
-            bot.chat(&format!("health: {health}"));
+            bot.chat(format!("health: {health}"));
         }
         "!hunger" => {
             let hunger = bot.hunger();
-            bot.chat(&format!(
+            bot.chat(format!(
                 "hunger: {}, saturation: {}",
                 hunger.food, hunger.saturation
             ));
         }
         "!pos" => {
             let pos = bot.position();
-            bot.chat(&format!("x: {}, y: {}, z: {}", pos.x, pos.y, pos.z));
+            bot.chat(format!("x: {}, y: {}, z: {}", pos.x, pos.y, pos.z));
         }
-        "!goto" => {
-            let goal: Arc<dyn Goal>;
+        "!goto" => match parts.len() {
+            1 => {
+                let error_fn = || {
+                    error!("Got !goto, could not find sender");
+                    anyhow::anyhow!("could not find message sender")
+                };
+                let uuid = chat.sender_uuid().ok_or_else(error_fn)?;
+                let entity = bot.entity_by_uuid(uuid).ok_or_else(error_fn)?;
+                let position = bot
+                    .get_entity_component::<Position>(entity)
+                    .ok_or_else(error_fn)?;
 
-            match parts.len() {
-                1 => {
-                    let error_fn = || {
-                        error!("Got !goto, could not find sender");
-                        anyhow::anyhow!("could not find message sender")
-                    };
-                    let uuid = chat.sender_uuid().ok_or_else(error_fn)?;
-                    let entity = bot.entity_by_uuid(uuid).ok_or_else(error_fn)?;
-                    let position = bot
-                        .get_entity_component::<Position>(entity)
-                        .ok_or_else(error_fn)?;
+                bot.start_goto_with_opts(BlockPosGoal(position.into()), PathfinderOpts::new());
 
-                    goal = Arc::new(BlockPosGoal(position.into()));
-
-                    info!(
-                        "going to location of {}",
-                        chat.sender().ok_or_else(error_fn)?
-                    );
-                }
-                2 => {
-                    let y: i32 = parts[1].parse()?;
-                    goal = Arc::new(YGoal { y });
-                }
-                3 => {
-                    let x: i32 = parts[1].parse()?;
-                    let z: i32 = parts[2].parse()?;
-                    goal = Arc::new(XZGoal { x, z });
-                }
-                4 => {
-                    let x: i32 = parts[1].parse()?;
-                    let y: i32 = parts[2].parse()?;
-                    let z: i32 = parts[3].parse()?;
-                    goal = Arc::new(BlockPosGoal(BlockPos::new(x, y, z)));
-                }
-                _ => {
-                    info!("Invalid number of arguments for !goto command");
-                    return Err(anyhow!("Invalid number of arguments for !goto command"));
-                }
+                info!(
+                    "going to location of {}",
+                    chat.sender().ok_or_else(error_fn)?
+                );
             }
-
-            bot.ecs.lock().send_event(GotoEvent {
-                entity: bot.entity,
-                goal,
-                successors_fn: default_move,
-                allow_mining: true,
-                min_timeout: PathfinderTimeout::Time(Duration::from_secs(2)),
-                max_timeout: PathfinderTimeout::Time(Duration::from_secs(10)),
-            });
-        }
+            2 => {
+                let y: i32 = parts[1].parse()?;
+                bot.start_goto_with_opts(YGoal { y }, PathfinderOpts::new());
+            }
+            3 => {
+                let x: i32 = parts[1].parse()?;
+                let z: i32 = parts[2].parse()?;
+                bot.start_goto_with_opts(XZGoal { x, z }, PathfinderOpts::new());
+            }
+            4 => {
+                let x: i32 = parts[1].parse()?;
+                let y: i32 = parts[2].parse()?;
+                let z: i32 = parts[3].parse()?;
+                bot.start_goto_with_opts(
+                    BlockPosGoal(BlockPos::new(x, y, z)),
+                    PathfinderOpts::new(),
+                );
+            }
+            _ => {
+                info!("Invalid number of arguments for !goto command");
+                return Err(anyhow!("Invalid number of arguments for !goto command"));
+            }
+        },
         "!stop" => {
             bot.stop_pathfinding();
         }
@@ -227,7 +209,7 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
                 let block_name = parts[1];
                 let block = Block::from_str(&format!("minecraft:{block_name}")).map_err(|_| {
                     info!("Invalid block name: {}", block_name);
-                    anyhow!("Invalid block name: {}", block_name)
+                    anyhow!("Invalid block name: {block_name}")
                 })?;
                 let blocks_pos: Vec<BlockPos> = bot
                     .world()
@@ -237,7 +219,7 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
                     .collect();
                 if blocks_pos.is_empty() {
                     info!("Could not find block nearby: {}", block_name);
-                    return Err(anyhow!("Could not find block nearby: {}", block_name));
+                    return Err(anyhow!("Could not find block nearby: {block_name}"));
                 }
                 info!("Mining block {} at positions {:?}", block, blocks_pos);
 
@@ -247,13 +229,13 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
                 let block_name = parts[1];
                 let block = Block::from_str(&format!("minecraft:{block_name}")).map_err(|_| {
                     info!("Invalid block name: {}", block_name);
-                    anyhow!("Invalid block name: {}", block_name)
+                    anyhow!("Invalid block name: {block_name}")
                 })?;
 
                 let item_name = parts[2];
                 let item = Item::from_str(&format!("minecraft:{item_name}")).map_err(|_| {
                     info!("Invalid item name: {}", item_name);
-                    anyhow!("Invalid item name: {}", item_name)
+                    anyhow!("Invalid item name: {item_name}")
                 })?;
 
                 let blocks_pos: Vec<BlockPos> = bot
@@ -264,7 +246,7 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
                     .collect();
                 if blocks_pos.is_empty() {
                     info!("Could not find block nearby: {}", block_name);
-                    return Err(anyhow!("Could not find block nearby: {}", block_name));
+                    return Err(anyhow!("Could not find block nearby: {block_name}"));
                 }
                 info!("Mining block {} at positions {:?}", block, blocks_pos);
                 bot.goto_and_try_mine_blocks(&blocks_pos).await?;
@@ -298,7 +280,7 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
                 let block_name = parts[1];
                 let block = Block::from_str(&format!("minecraft:{block_name}")).map_err(|_| {
                     info!("Invalid block name: {}", block_name);
-                    anyhow!("Invalid block name: {}", block_name)
+                    anyhow!("Invalid block name: {block_name}")
                 })?;
 
                 loop {
@@ -310,7 +292,7 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
                         .collect();
                     if blocks_pos.is_empty() {
                         info!("Could not find block nearby: {}", block_name);
-                        return Err(anyhow!("Could not find block nearby: {}", block_name));
+                        return Err(anyhow!("Could not find block nearby: {block_name}"));
                     }
                     info!("Mining block {} at positions {:?}", block, blocks_pos);
 
@@ -321,13 +303,13 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
                 let block_name = parts[1];
                 let block = Block::from_str(&format!("minecraft:{block_name}")).map_err(|_| {
                     info!("Invalid block name: {}", block_name);
-                    anyhow!("Invalid block name: {}", block_name)
+                    anyhow!("Invalid block name: {block_name}")
                 })?;
 
                 let item_name = parts[2];
                 let item = Item::from_str(&format!("minecraft:{item_name}")).map_err(|_| {
                     info!("Invalid item name: {}", item_name);
-                    anyhow!("Invalid item name: {}", item_name)
+                    anyhow!("Invalid item name: {item_name}")
                 })?;
 
                 loop {
@@ -340,7 +322,7 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
                         .collect();
                     if blocks_pos.is_empty() {
                         info!("Could not find block nearby: {}", block_name);
-                        return Err(anyhow!("Could not find block nearby: {}", block_name));
+                        return Err(anyhow!("Could not find block nearby: {block_name}"));
                     }
                     info!("Mining block {} at positions {:?}", block, blocks_pos);
                     bot.goto_and_try_mine_blocks(&blocks_pos).await?;
@@ -389,7 +371,7 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
                 let item_name = parts[1];
                 let item = Item::from_str(&format!("minecraft:{item_name}")).map_err(|_| {
                     info!("Invalid item name: {}", item_name);
-                    anyhow!("Invalid item name: {}", item_name)
+                    anyhow!("Invalid item name: {item_name}")
                 })?;
                 info!("Picking up item: {}", item);
 
@@ -400,49 +382,49 @@ async fn handle_chat(bot: Client, _state: State, chat: &ChatPacket) -> Result<()
                 return Err(anyhow!("Incorrect arguments for !pickup command"));
             }
         },
-        "!killaura" => match parts.get(1) {
-            Some(&"on") => {
-                let target = match parts.get(2) {
-                    Some(&"hostile") => EntityTarget::AllMonsters,
-                    Some(&"players") => EntityTarget::AllPlayers,
-                    Some(&"entity") => {
-                        let entity_name = parts.get(3).ok_or_else(|| {
-                            error!("!killaura entity requires an entity name");
-                            anyhow!("!killaura entity requires an entity name")
-                        })?;
-                        EntityTarget::EntityKind(
-                            EntityKind::from_str(&("minecraft:".to_owned() + *entity_name))
-                                .map_err(|_| {
-                                    error!("Invalid entity name: {}", entity_name);
-                                    anyhow!("Invalid entity name: {}", entity_name)
-                                })?,
-                        )
-                    }
-                    Some(&"player") => {
-                        let player_name = parts.get(3).ok_or_else(|| {
-                            error!("!killaura player requires a player name");
-                            anyhow!("!killaura player requires a player name")
-                        })?;
-                        EntityTarget::PlayerName(player_name.to_string())
-                    }
-                    _ => {
-                        info!("Invalid arguments for !killaura command");
-                        return Err(anyhow!("Invalid arguments for !killaura command"));
-                    }
-                };
+        // "!killaura" => match parts.get(1) {
+        //     Some(&"on") => {
+        //         let target = match parts.get(2) {
+        //             Some(&"hostile") => EntityTarget::AllMonsters,
+        //             Some(&"players") => EntityTarget::AllPlayers,
+        //             Some(&"entity") => {
+        //                 let entity_name = parts.get(3).ok_or_else(|| {
+        //                     error!("!killaura entity requires an entity name");
+        //                     anyhow!("!killaura entity requires an entity name")
+        //                 })?;
+        //                 EntityTarget::EntityKind(
+        //                     EntityKind::from_str(&("minecraft:".to_owned() + *entity_name))
+        //                         .map_err(|_| {
+        //                             error!("Invalid entity name: {}", entity_name);
+        //                             anyhow!("Invalid entity name: {}", entity_name)
+        //                         })?,
+        //                 )
+        //             }
+        //             Some(&"player") => {
+        //                 let player_name = parts.get(3).ok_or_else(|| {
+        //                     error!("!killaura player requires a player name");
+        //                     anyhow!("!killaura player requires a player name")
+        //                 })?;
+        //                 EntityTarget::PlayerName(player_name.to_string())
+        //             }
+        //             _ => {
+        //                 info!("Invalid arguments for !killaura command");
+        //                 return Err(anyhow!("Invalid arguments for !killaura command"));
+        //             }
+        //         };
 
-                info!("killaura enabled for target {:?}!", &target);
-                bot.enable_auto_kill(EntityTargets::new(&[target]));
-            }
-            Some(&"off") => {
-                bot.disable_auto_kill();
-                info!("killaura disabled!");
-            }
-            _ => {
-                info!("Invalid arguments for !killaura command");
-                return Err(anyhow!("Invalid arguments for !killaura command"));
-            }
-        },
+        //         info!("killaura enabled for target {:?}!", &target);
+        //         bot.enable_auto_kill(EntityTargets::new(&[target]));
+        //     }
+        //     Some(&"off") => {
+        //         bot.disable_auto_kill();
+        //         info!("killaura disabled!");
+        //     }
+        //     _ => {
+        //         info!("Invalid arguments for !killaura command");
+        //         return Err(anyhow!("Invalid arguments for !killaura command"));
+        //     }
+        // },
         _ => {}
     };
 

@@ -10,7 +10,7 @@ repository = "github.com/x-osc/lickbot"
 
 [workspace.dependencies]
 azalea = { git = "https://github.com/x-osc/azalea", version = "*", branch = "dev" }
-bevy_ecs = { version = "0.16", default-features = false }
+bevy_ecs = { version = "*", default-features = false }
 anyhow = "1.0.97"
 thiserror = "2.0.12"
 parking_lot = "0.12.3"

@@ -70,7 +70,7 @@ pub fn get_damage_and_attack_speed_durability(item: &ItemStack) -> (f64, f64) {
     } else {
         // if has durability -> lower
         if let ItemStack::Present(item_data) = item
-            && item_data.components.has::<components::Damage>()
+            && item_data.get_component::<components::Damage>().is_some()
         {
             damage = 0.8;
             attack_speed = 4.;

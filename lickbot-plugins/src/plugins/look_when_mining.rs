@@ -1,8 +1,8 @@
 use azalea::{
-    LookAtEvent,
     app::{App, Plugin},
+    bot::LookAtEvent,
     entity::{LocalEntity, metadata::Player},
-    mining::{MineBlockPos, MiningSet},
+    mining::{MineBlockPos, MiningSystems},
     pathfinder::Pathfinder,
     prelude::*,
 };
@@ -13,7 +13,7 @@ pub struct LookMinePlugin;
 
 impl Plugin for LookMinePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(GameTick, look_while_mining.after(MiningSet));
+        app.add_systems(GameTick, look_while_mining.after(MiningSystems));
     }
 }
 
@@ -21,7 +21,7 @@ impl Plugin for LookMinePlugin {
 #[allow(clippy::type_complexity)]
 pub fn look_while_mining(
     query: Query<(Entity, &MineBlockPos, Option<&Pathfinder>), (With<Player>, With<LocalEntity>)>,
-    mut look_at_events: EventWriter<LookAtEvent>,
+    mut look_at_events: MessageWriter<LookAtEvent>,
 ) {
     for (entity, mining_component, pathfinder) in &query {
         // let pathfinder handle looking at

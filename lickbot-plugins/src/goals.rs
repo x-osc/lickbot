@@ -1,10 +1,10 @@
 use std::fmt::Debug;
 
-use azalea::core::hit_result::HitResult;
-use azalea::interact::pick;
+use azalea::bot::direction_looking_at;
+use azalea::interact::pick::pick_block;
 use azalea::pathfinder::goals::{BlockPosGoal, Goal};
 use azalea::world::ChunkStorage;
-use azalea::{BlockPos, Vec3, direction_looking_at};
+use azalea::{BlockPos, Vec3};
 
 /// Move to a position where we can reach the given block.
 #[derive(Clone)]
@@ -45,18 +45,16 @@ impl Goal for ReachBlockPosGoal {
         }
 
         let eye_position = n.to_vec3_floored() + Vec3::new(0.5, 1.62, 0.5);
-        let look_direction = direction_looking_at(&eye_position, &self.pos.center());
+        let look_direction = direction_looking_at(eye_position, self.pos.center());
 
-        match pick(
-            &look_direction,
-            &eye_position,
+        let block_hit_result = pick_block(
+            look_direction,
+            eye_position,
             &self.chunk_storage,
             self.distance,
-        ) {
-            HitResult::Block(block_hit_result) => block_hit_result.block_pos == self.pos,
-            // there is an entity in the way
-            HitResult::Entity => false,
-        }
+        );
+
+        block_hit_result.block_pos == self.pos
     }
 }
 

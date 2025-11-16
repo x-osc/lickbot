@@ -3,7 +3,7 @@ use std::ops::{Deref, DerefMut};
 use azalea::entity::metadata::AbstractMonster;
 use azalea::entity::{self, Dead, LocalEntity, Position};
 use azalea::player::GameProfileComponent;
-use azalea::registry;
+use azalea::registry::{self, EntityKind};
 use azalea::world::{InstanceName, MinecraftEntityId};
 use bevy_ecs::prelude::*;
 use bevy_ecs::system::SystemParam;
@@ -49,7 +49,7 @@ type TargetsQuery<'w, 's> = Query<
     's,
     (
         Entity,
-        Option<&'static entity::EntityKind>,
+        Option<&'static EntityKind>,
         Option<&'static MinecraftEntityId>,
         Option<&'static GameProfileComponent>,
         Option<&'static AbstractMonster>,

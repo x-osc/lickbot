@@ -79,7 +79,7 @@ impl NearestEntityClientExt for Client {
                     return None;
                 }
 
-                let distance_sq = client_position.distance_squared_to(position);
+                let distance_sq = client_position.distance_squared_to(**position);
                 if distance_sq > max_distance * max_distance {
                     return None;
                 }
