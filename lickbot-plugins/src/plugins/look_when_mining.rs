@@ -4,7 +4,7 @@ use azalea::{
     ecs::prelude::*,
     entity::{LocalEntity, metadata::Player},
     mining::{MineBlockPos, MiningSystems},
-    pathfinder::Pathfinder,
+    pathfinder::{self, Pathfinder},
     prelude::*,
 };
 
@@ -13,7 +13,12 @@ pub struct LookMinePlugin;
 
 impl Plugin for LookMinePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(GameTick, look_while_mining.after(MiningSystems));
+        app.add_systems(
+            GameTick,
+            look_while_mining
+                .after(MiningSystems)
+                .after(pathfinder::recalculate_if_has_goal_but_no_path),
+        );
     }
 }
 
