@@ -1,9 +1,9 @@
 use azalea::Client;
+use azalea::ecs::prelude::*;
 use azalea::entity::Position;
 use azalea::entity::metadata::ItemItem;
 use azalea::registry::Item;
 use azalea::world::InstanceName;
-use bevy_ecs::prelude::*;
 
 pub trait NearestEntityClientExt {
     // fn nearest_item(&self, item: Item) -> Option<Entity>;

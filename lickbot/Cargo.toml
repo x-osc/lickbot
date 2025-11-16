@@ -6,6 +6,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+bevy_utils.workspace = true
 lickbot-plugins = { version = "0.1.0", path = "../lickbot-plugins/" }
 parking_lot = { version = "0.12.3", features = ["deadlock_detection"] }
 azalea.workspace = true

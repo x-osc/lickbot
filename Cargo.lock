@@ -1820,6 +1820,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "azalea",
+ "bevy_utils",
  "lickbot-plugins",
  "parking_lot",
  "tokio",
@@ -1831,7 +1832,7 @@ name = "lickbot-plugins"
 version = "0.1.0"
 dependencies = [
  "azalea",
- "bevy_ecs",
+ "bevy_utils",
  "indexmap",
  "thiserror 2.0.17",
  "tokio",

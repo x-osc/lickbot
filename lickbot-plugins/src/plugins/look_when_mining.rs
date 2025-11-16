@@ -1,12 +1,12 @@
 use azalea::{
     app::{App, Plugin},
     bot::LookAtEvent,
+    ecs::prelude::*,
     entity::{LocalEntity, metadata::Player},
     mining::{MineBlockPos, MiningSystems},
     pathfinder::Pathfinder,
     prelude::*,
 };
-use bevy_ecs::prelude::*;
 
 /// A plugin that makes the player always look at the block they are mining.
 pub struct LookMinePlugin;

@@ -6,10 +6,10 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+bevy_utils.workspace = true
 azalea.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
-bevy_ecs.workspace = true
 tracing.workspace = true
 
 [dev-dependencies]
