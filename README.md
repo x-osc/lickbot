@@ -1,3 +1,5 @@
+lickbot is no more, visit [lickbot2](https://github.com/x-osc/lickbot2/)
+
 # Lickbot
 
 mine craft bot
